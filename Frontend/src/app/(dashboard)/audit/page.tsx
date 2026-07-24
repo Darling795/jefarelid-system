@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
 
 import { getAuditLog, listAuditLogs, type AuditLogItem } from "@/lib/api/audit";
 import { formatDate } from "@/lib/format";
@@ -30,6 +31,76 @@ const ACTION_TONE: Record<string, string> = {
   update: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
   delete: "bg-destructive/10 text-destructive",
 };
+
+function prettyKey(k: string): string {
+  return k
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .replace(/\bId\b/g, "ID")
+    .trim();
+}
+
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (typeof v === "string") {
+    if (/^\d{4}-\d{2}-\d{2}(T|$)/.test(v)) return formatDate(v);
+    return v;
+  }
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+type Json = Record<string, unknown> | null | undefined;
+
+function AuditDiff({
+  before,
+  after,
+  action,
+}: {
+  before: Json;
+  after: Json;
+  action: string;
+}) {
+  const b = before && typeof before === "object" ? before : {};
+  const a = after && typeof after === "object" ? after : {};
+  const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)]));
+  if (keys.length === 0) {
+    return <p className="text-sm text-muted-foreground">No details recorded.</p>;
+  }
+  return (
+    <div className="max-h-[26rem] overflow-y-auto rounded-xl border">
+      <dl className="divide-y">
+        {keys.map((k) => {
+          const bv = b[k];
+          const av = a[k];
+          const changed =
+            action === "update" && JSON.stringify(bv) !== JSON.stringify(av);
+          return (
+            <div key={k} className="grid grid-cols-[9rem_1fr] gap-3 px-3 py-2 text-sm">
+              <dt className="truncate text-muted-foreground">{prettyKey(k)}</dt>
+              <dd className="min-w-0 break-words">
+                {action === "create" ? (
+                  <span className="font-medium">{fmtVal(av)}</span>
+                ) : action === "delete" ? (
+                  <span>{fmtVal(bv)}</span>
+                ) : changed ? (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-muted-foreground line-through">{fmtVal(bv)}</span>
+                    <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
+                    <span className="font-semibold text-primary">{fmtVal(av)}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">{fmtVal(av)}</span>
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </div>
+  );
+}
 
 export default function AuditPage() {
   const [entityType, setEntityType] = useState("");
@@ -94,25 +165,34 @@ export default function AuditPage() {
       </Card>
 
       <Dialog open={selected !== null} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {selected?.action} · {selected?.entityType}
+            <DialogTitle className="flex items-center gap-2 capitalize">
+              {selected && (
+                <Badge className={ACTION_TONE[selected.action] ?? ""}>
+                  {selected.action}
+                </Badge>
+              )}
+              {selected?.entityType}
             </DialogTitle>
+            {selected && (
+              <p className="text-sm text-muted-foreground">
+                {selected.user?.name ?? "System"} · {formatDate(selected.createdAt)}
+                {selected.ipAddress ? ` · ${selected.ipAddress}` : ""}
+              </p>
+            )}
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Before</p>
-              <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs">
-                {JSON.stringify(detail.data?.beforeJson ?? null, null, 2)}
-              </pre>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">After</p>
-              <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs">
-                {JSON.stringify(detail.data?.afterJson ?? null, null, 2)}
-              </pre>
-            </div>
+
+          <div className="mt-1">
+            {detail.isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : (
+              <AuditDiff
+                before={detail.data?.beforeJson as Json}
+                after={detail.data?.afterJson as Json}
+                action={selected?.action ?? ""}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
