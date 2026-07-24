@@ -10,6 +10,7 @@ import {
   createUtilityBill,
   listUtilityBills,
   recordUtilityPayment,
+  UTILITY_TYPES,
   type UtilityBillListItem,
   type UtilityType,
 } from "@/lib/api/utilities";
@@ -50,7 +51,7 @@ export default function UtilitiesPage() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [payFor, setPayFor] = useState<UtilityBillListItem | null>(null);
-  const [bill, setBill] = useState({ buildingId: "", utilityType: "telephone" as UtilityType, billingPeriod: "", amount: "", dueDate: "" });
+  const [bill, setBill] = useState({ buildingId: "", utilityType: "electric" as UtilityType, billingPeriod: "", amount: "", dueDate: "" });
   const [payment, setPayment] = useState({ amountPaid: "", paymentDate: "", voucherNumber: "", orNumber: "" });
 
   const buildings = useQuery({ queryKey: ["buildings"], queryFn: listBuildings });
@@ -61,7 +62,7 @@ export default function UtilitiesPage() {
     onSuccess: async () => {
       toast.success("Utility bill recorded.");
       setCreateOpen(false);
-      setBill({ buildingId: "", utilityType: "telephone", billingPeriod: "", amount: "", dueDate: "" });
+      setBill({ buildingId: "", utilityType: "electric", billingPeriod: "", amount: "", dueDate: "" });
       await qc.invalidateQueries({ queryKey: ["utility-bills"] });
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not record bill."),
@@ -160,11 +161,12 @@ export default function UtilitiesPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Type</Label>
-                <Select value={bill.utilityType} onValueChange={(v) => setBill((f) => ({ ...f, utilityType: v as UtilityType }))}>
+                <Select value={bill.utilityType} onValueChange={(v) => setBill((f) => ({ ...f, utilityType: (v ?? "electric") as UtilityType }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="telephone">Telephone</SelectItem>
-                    <SelectItem value="internet">Internet</SelectItem>
+                    {UTILITY_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

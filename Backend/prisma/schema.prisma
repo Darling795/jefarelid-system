@@ -41,11 +41,6 @@ enum InvoiceStatus {
   voided
 }
 
-enum UtilityType {
-  telephone
-  internet
-}
-
 enum UtilityBillStatus {
   unpaid
   paid
@@ -196,7 +191,7 @@ model RentalPayment {
 model UtilityBill {
   id            String            @id @default(cuid())
   buildingId    String            @map("building_id")
-  utilityType   UtilityType       @map("utility_type")
+  utilityType   String            @map("utility_type")
   billingPeriod String            @map("billing_period") // YYYY-MM
   amount        Decimal           @db.Decimal(14, 2)
   dueDate       DateTime          @map("due_date") @db.Date

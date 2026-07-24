@@ -1,15 +1,14 @@
 import {
-  IsEnum,
+  IsNotEmpty,
   IsNumberString,
   IsOptional,
   IsString,
   Matches,
 } from 'class-validator';
-import { UtilityType } from '@prisma/client';
 
 export class CreateUtilityBillDto {
   @IsString() buildingId!: string;
-  @IsEnum(UtilityType) utilityType!: UtilityType;
+  @IsString() @IsNotEmpty() utilityType!: string;
   @Matches(/^\d{4}-\d{2}$/) billingPeriod!: string;
   @IsNumberString() amount!: string;
   @Matches(/^\d{4}-\d{2}-\d{2}$/) dueDate!: string;

@@ -1,7 +1,13 @@
 import { apiClient } from "./client";
 import type { ListMeta } from "./types";
 
-export type UtilityType = "telephone" | "internet";
+export type UtilityType = "electric" | "phone" | "water" | "wifi";
+export const UTILITY_TYPES: { value: UtilityType; label: string }[] = [
+  { value: "electric", label: "Electric" },
+  { value: "phone", label: "Phone" },
+  { value: "water", label: "Water" },
+  { value: "wifi", label: "WiFi" },
+];
 
 export interface UtilityBillListItem {
   id: string;

@@ -143,11 +143,12 @@ export class DashboardService {
       const internet = forMonth
         .filter((x) => x.utilityType === 'internet')
         .reduce((a, x) => a.add(x.amount), D0());
+      const total = forMonth.reduce((a, x) => a.add(x.amount), D0());
       return {
         month: key,
         telephone: telephone.toFixed(2),
         internet: internet.toFixed(2),
-        total: telephone.add(internet).toFixed(2),
+        total: total.toFixed(2),
       };
     });
   }
