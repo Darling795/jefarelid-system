@@ -1,0 +1,313 @@
+// JEFARELID Building and Room Rental Management System — data model.
+// Maps to SPEC.md section 5. All money columns are Decimal, never Float.
+// Column names are snake_case (@map); Prisma fields stay camelCase.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────
+
+enum RoomStatus {
+  vacant
+  occupied
+  reserved
+}
+
+enum TenantStatus {
+  active
+  inactive
+}
+
+enum ContractStatus {
+  draft
+  active
+  expiring
+  renewed
+  terminated
+  expired
+}
+
+enum InvoiceStatus {
+  unpaid
+  partial
+  paid
+  overdue
+  voided
+}
+
+enum UtilityType {
+  telephone
+  internet
+}
+
+enum UtilityBillStatus {
+  unpaid
+  paid
+  overdue
+}
+
+enum UserRole {
+  super_admin
+  admin
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+}
+
+// ── Buildings & rooms ────────────────────────────────────────────────────
+
+model Building {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  rooms        Room[]
+  utilityBills UtilityBill[]
+
+  @@map("buildings")
+}
+
+model Room {
+  id         String     @id @default(cuid())
+  buildingId String     @map("building_id")
+  roomNumber String     @map("room_number")
+  floor      String?
+  areaSqm    Decimal?   @map("area_sqm") @db.Decimal(10, 2)
+  baseRate   Decimal    @map("base_rate") @db.Decimal(14, 2)
+  status     RoomStatus @default(vacant)
+  isActive   Boolean    @default(true) @map("is_active")
+
+  building  Building   @relation(fields: [buildingId], references: [id])
+  contracts Contract[]
+
+  @@index([buildingId])
+  @@map("rooms")
+}
+
+// ── Tenants ──────────────────────────────────────────────────────────────
+
+model Tenant {
+  id            String       @id @default(cuid())
+  businessName  String       @map("business_name")
+  contactPerson String?      @map("contact_person")
+  contactNumber String?      @map("contact_number")
+  email         String?
+  tin           String?
+  address       String?
+  status        TenantStatus @default(active)
+  notes         String?
+
+  contracts Contract[]
+
+  @@map("tenants")
+}
+
+// ── Contracts ────────────────────────────────────────────────────────────
+
+model Contract {
+  id                   String         @id @default(cuid())
+  tenantId             String         @map("tenant_id")
+  roomId               String         @map("room_id")
+  startDate            DateTime       @map("start_date") @db.Date
+  endDate              DateTime       @map("end_date") @db.Date
+  basicRent            Decimal        @map("basic_rent") @db.Decimal(14, 2)
+  escalationRate       Decimal        @map("escalation_rate") @db.Decimal(6, 4)
+  escalationAnchorDate DateTime       @map("escalation_anchor_date") @db.Date
+  securityDeposit      Decimal        @map("security_deposit") @db.Decimal(14, 2)
+  advancePayment       Decimal        @map("advance_payment") @db.Decimal(14, 2)
+  paymentDueDay        Int            @map("payment_due_day")
+  status               ContractStatus @default(draft)
+  parentContractId     String?        @map("parent_contract_id")
+  terminationDate      DateTime?      @map("termination_date") @db.Date
+  terminationReason    String?        @map("termination_reason")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  room     Room            @relation(fields: [roomId], references: [id])
+  invoices RentalInvoice[]
+
+  // Self-relation: a renewal points back to the contract it replaced.
+  parentContract Contract?  @relation("ContractRenewal", fields: [parentContractId], references: [id])
+  renewals       Contract[] @relation("ContractRenewal")
+
+  @@index([tenantId])
+  @@index([roomId])
+  @@index([status])
+  @@map("contracts")
+}
+
+// ── Rental invoices & payments ───────────────────────────────────────────
+
+model RentalInvoice {
+  id               String        @id @default(cuid())
+  contractId       String        @map("contract_id")
+  periodMonth      String        @map("period_month") // YYYY-MM
+  basicRentApplied Decimal       @map("basic_rent_applied") @db.Decimal(14, 2)
+  vatAmount        Decimal       @map("vat_amount") @db.Decimal(14, 2)
+  grossRent        Decimal       @map("gross_rent") @db.Decimal(14, 2)
+  whtAmount        Decimal       @map("wht_amount") @db.Decimal(14, 2)
+  netReceivable    Decimal       @map("net_receivable") @db.Decimal(14, 2)
+  dueDate          DateTime      @map("due_date") @db.Date
+  status           InvoiceStatus @default(unpaid)
+  generatedAt      DateTime      @default(now()) @map("generated_at")
+
+  contract Contract        @relation(fields: [contractId], references: [id])
+  payments RentalPayment[]
+
+  // Enforces SPEC 6.8: no duplicate generation per contract + period.
+  @@unique([contractId, periodMonth])
+  @@index([status])
+  @@map("rental_invoices")
+}
+
+model RentalPayment {
+  id            String   @id @default(cuid())
+  invoiceId     String   @map("invoice_id")
+  amountPaid    Decimal  @map("amount_paid") @db.Decimal(14, 2)
+  paymentDate   DateTime @map("payment_date") @db.Date
+  orNumber      String?  @map("or_number")
+  paymentMethod String?  @map("payment_method")
+  remarks       String?
+  recordedById  String?  @map("recorded_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  invoice    RentalInvoice @relation(fields: [invoiceId], references: [id])
+  recordedBy User?         @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([invoiceId])
+  @@map("rental_payments")
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────
+
+model UtilityBill {
+  id            String            @id @default(cuid())
+  buildingId    String            @map("building_id")
+  utilityType   UtilityType       @map("utility_type")
+  billingPeriod String            @map("billing_period") // YYYY-MM
+  amount        Decimal           @db.Decimal(14, 2)
+  dueDate       DateTime          @map("due_date") @db.Date
+  status        UtilityBillStatus @default(unpaid)
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  building Building         @relation(fields: [buildingId], references: [id])
+  payments UtilityPayment[]
+
+  @@index([buildingId])
+  @@map("utility_bills")
+}
+
+model UtilityPayment {
+  id            String   @id @default(cuid())
+  utilityBillId String   @map("utility_bill_id")
+  amountPaid    Decimal  @map("amount_paid") @db.Decimal(14, 2)
+  paymentDate   DateTime @map("payment_date") @db.Date
+  voucherNumber String?  @map("voucher_number")
+  orNumber      String?  @map("or_number")
+  recordedById  String?  @map("recorded_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  utilityBill UtilityBill @relation(fields: [utilityBillId], references: [id])
+  recordedBy  User?       @relation("UtilityPaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([utilityBillId])
+  @@map("utility_payments")
+}
+
+// ── Users ────────────────────────────────────────────────────────────────
+
+model User {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  role             UserRole
+  isActive         Boolean   @default(true) @map("is_active")
+  lastLoginAt      DateTime? @map("last_login_at")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  rentalPaymentsRecorded  RentalPayment[]  @relation("PaymentRecordedBy")
+  utilityPaymentsRecorded UtilityPayment[] @relation("UtilityPaymentRecordedBy")
+  auditLogs               AuditLog[]
+  notifications           Notification[]
+
+  @@map("users")
+}
+
+// ── Audit logs (append-only) ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?     @map("user_id")
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  beforeJson Json?       @map("before_json")
+  afterJson  Json?       @map("after_json")
+  ipAddress  String?     @map("ip_address")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ── Notifications ────────────────────────────────────────────────────────
+
+model Notification {
+  id              String    @id @default(cuid())
+  type            String
+  entityType      String    @map("entity_type")
+  entityId        String    @map("entity_id")
+  recipientUserId String?   @map("recipient_user_id")
+  sentAt          DateTime? @map("sent_at")
+  status          String
+  dedupeKey       String    @unique @map("dedupe_key")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  recipient User? @relation(fields: [recipientUserId], references: [id])
+
+  @@map("notifications")
+}
+
+// ── Settings (key/value) ─────────────────────────────────────────────────
+
+model Setting {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  description String?
+
+  @@map("settings")
+}
+
+// Express session store table (connect-pg-simple). Owned by Prisma so it does
+// not show up as schema drift; the store uses createTableIfMissing: false.
+model Session {
+  sid    String   @id
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
