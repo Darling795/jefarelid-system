@@ -10,6 +10,7 @@ import { generateInvoices, listInvoices } from "@/lib/api/invoices";
 import { ApiError } from "@/lib/api/types";
 import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -107,9 +108,18 @@ export default function InvoicesPage() {
                 <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))}
             {data?.data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  No invoices.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="p-0">
+                  <EmptyState
+                    icon={FilePlus2}
+                    title={status === "all" ? "No invoices yet" : `No ${status} invoices`}
+                    description="Generate a month's invoices for all active contracts."
+                    action={
+                      <Button onClick={() => setGenOpen(true)}>
+                        <FilePlus2 /> Generate month
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}

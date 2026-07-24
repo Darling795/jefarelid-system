@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -68,6 +69,34 @@ function Kpi({
     </Card>
   );
 }
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number | string; color?: string }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border bg-popover px-3 py-2 text-xs shadow-lg">
+      {label && <p className="mb-1.5 font-semibold">{label}</p>}
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="size-2 rounded-full" style={{ background: p.color }} />
+          <span className="text-muted-foreground">{p.name}</span>
+          <span className="ml-auto font-semibold tabular-nums">
+            {formatPHP(Number(p.value))}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const kAxis = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`);
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -149,14 +178,39 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="h-72 pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={incomeData} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" fontSize={11} tickLine={false} />
-                <YAxis fontSize={11} tickLine={false} width={48} />
-                <Tooltip formatter={(value) => formatPHP(Number(value))} />
-                <Line type="monotone" dataKey="Billed" stroke="#7c3aed" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="Collected" stroke="#10b981" strokeWidth={2.5} dot={false} />
-              </LineChart>
+              <AreaChart data={incomeData} margin={{ left: 4, right: 8, top: 8 }}>
+                <defs>
+                  <linearGradient id="gradBilled" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradCollected" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                <XAxis dataKey="month" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} width={44} tickFormatter={kAxis} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Area
+                  type="monotone"
+                  dataKey="Billed"
+                  stroke="#7c3aed"
+                  strokeWidth={2.5}
+                  fill="url(#gradBilled)"
+                  activeDot={{ r: 4 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="Collected"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fill="url(#gradCollected)"
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -167,12 +221,18 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="h-72 pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={agingData} margin={{ left: 8, right: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="bucket" fontSize={11} tickLine={false} />
-                <YAxis fontSize={11} tickLine={false} width={48} />
-                <Tooltip formatter={(value) => formatPHP(Number(value))} />
-                <Bar dataKey="amount" fill="#7c3aed" radius={[6, 6, 0, 0]} />
+              <BarChart data={agingData} margin={{ left: 4, right: 8, top: 8 }}>
+                <defs>
+                  <linearGradient id="gradBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.65} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                <XAxis dataKey="bucket" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} width={44} tickFormatter={kAxis} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(124,58,237,0.06)" }} />
+                <Bar name="Outstanding" dataKey="amount" fill="url(#gradBar)" radius={[6, 6, 0, 0]} maxBarSize={56} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

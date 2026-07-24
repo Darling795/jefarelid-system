@@ -7,6 +7,7 @@ import { Building2, Plus } from "lucide-react";
 
 import { listBuildings } from "@/lib/api/buildings";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { BuildingFormDialog } from "@/components/buildings/building-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -68,9 +69,18 @@ export default function BuildingsPage() {
             )}
 
             {data?.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                  No buildings yet.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="p-0">
+                  <EmptyState
+                    icon={Building2}
+                    title="No buildings yet"
+                    description="Add your first building to start managing rooms and tenants."
+                    action={
+                      <Button onClick={() => setCreateOpen(true)}>
+                        <Plus /> New building
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}

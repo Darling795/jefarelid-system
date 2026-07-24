@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { LoaderCircle, Plus, Wallet } from "lucide-react";
+import { LoaderCircle, Plus, Wallet, Zap } from "lucide-react";
 
 import { listBuildings } from "@/lib/api/buildings";
 import {
@@ -16,6 +16,7 @@ import {
 import { ApiError } from "@/lib/api/types";
 import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -105,7 +106,20 @@ export default function UtilitiesPage() {
                 <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))}
             {bills.data?.data.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="py-10 text-center text-muted-foreground">No utility bills.</TableCell></TableRow>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="p-0">
+                  <EmptyState
+                    icon={Zap}
+                    title="No utility bills yet"
+                    description="Record telephone and internet bills per building."
+                    action={
+                      <Button onClick={() => setCreateOpen(true)}>
+                        <Plus /> New bill
+                      </Button>
+                    }
+                  />
+                </TableCell>
+              </TableRow>
             )}
             {bills.data?.data.map((b) => (
               <TableRow key={b.id}>

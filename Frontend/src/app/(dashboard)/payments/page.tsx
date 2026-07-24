@@ -1,10 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { CreditCard } from "lucide-react";
 
 import { getOutstanding, listPayments } from "@/lib/api/payments";
 import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -68,9 +70,13 @@ export default function PaymentsPage() {
                 <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))}
             {payments.data?.data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  No payments recorded yet. Record payments from an invoice.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={CreditCard}
+                    title="No payments yet"
+                    description="Open an invoice and use “Record payment” to log a collection."
+                  />
                 </TableCell>
               </TableRow>
             )}

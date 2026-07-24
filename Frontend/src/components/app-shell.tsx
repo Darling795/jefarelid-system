@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { AlertsBell } from "@/components/alerts-bell";
+import { GlobalSearch } from "@/components/global-search";
 
 const ROLE_LABEL: Record<AuthUser["role"], string> = {
   super_admin: "Super Admin",
@@ -188,6 +189,7 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
             </div>
 
             <div className="flex items-center gap-3 sm:gap-4">
+              <GlobalSearch />
               <AlertsBell />
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-semibold">

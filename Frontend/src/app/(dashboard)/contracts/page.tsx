@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 
 import { listContracts } from "@/lib/api/contracts";
 import { formatDate, formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -85,9 +86,18 @@ export default function ContractsPage() {
                 </TableRow>
               ))}
             {data?.data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  No contracts.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState
+                    icon={FileText}
+                    title={status === "all" ? "No contracts yet" : `No ${status} contracts`}
+                    description="Create a lease linking a tenant to a room."
+                    action={
+                      <Button nativeButton={false} render={<Link href="/contracts/new" />}>
+                        <Plus /> New contract
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}

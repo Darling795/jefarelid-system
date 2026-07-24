@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 
 import { listTenants } from "@/lib/api/tenants";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
 import { TenantFormDialog } from "@/components/tenants/tenant-form-dialog";
 import { Button } from "@/components/ui/button";
@@ -80,9 +81,24 @@ export default function TenantsPage() {
               </TableRow>
             )}
             {data?.data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  No tenants found.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState
+                    icon={Users}
+                    title={search ? "No matches" : "No tenants yet"}
+                    description={
+                      search
+                        ? "Try a different name, contact, or TIN."
+                        : "Add the businesses that lease your rooms."
+                    }
+                    action={
+                      !search ? (
+                        <Button onClick={() => setCreateOpen(true)}>
+                          <Plus /> New tenant
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
