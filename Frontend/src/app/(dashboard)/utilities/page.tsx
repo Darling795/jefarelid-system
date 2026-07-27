@@ -152,7 +152,11 @@ export default function UtilitiesPage() {
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="col-span-2 flex flex-col gap-2">
                 <Label>Building</Label>
-                <Select value={bill.buildingId} onValueChange={(v) => setBill((f) => ({ ...f, buildingId: v ?? "" }))}>
+                <Select
+                  value={bill.buildingId}
+                  onValueChange={(v) => setBill((f) => ({ ...f, buildingId: v ?? "" }))}
+                  items={buildings.data?.map((b) => ({ value: b.id, label: b.name }))}
+                >
                   <SelectTrigger><SelectValue placeholder="Select building" /></SelectTrigger>
                   <SelectContent>
                     {buildings.data?.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
@@ -161,7 +165,11 @@ export default function UtilitiesPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Type</Label>
-                <Select value={bill.utilityType} onValueChange={(v) => setBill((f) => ({ ...f, utilityType: (v ?? "electric") as UtilityType }))}>
+                <Select
+                  value={bill.utilityType}
+                  onValueChange={(v) => setBill((f) => ({ ...f, utilityType: (v ?? "electric") as UtilityType }))}
+                  items={UTILITY_TYPES}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {UTILITY_TYPES.map((t) => (

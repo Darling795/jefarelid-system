@@ -59,7 +59,11 @@ export default function ReportsPage() {
         <CardContent className="flex flex-wrap items-end gap-4">
           <div className="flex min-w-52 flex-col gap-2">
             <Label>Report</Label>
-            <Select value={type} onValueChange={(v) => { setType(v ?? "collection"); setFilters({}); setActive(null); }}>
+            <Select
+              value={type}
+              onValueChange={(v) => { setType(v ?? "collection"); setFilters({}); setActive(null); }}
+              items={REPORTS.map((r) => ({ value: r.key, label: r.label }))}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {REPORTS.map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}

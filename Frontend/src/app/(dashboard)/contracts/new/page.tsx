@@ -105,7 +105,11 @@ export default function NewContractPage() {
           >
             <div className="flex flex-col gap-2">
               <Label>Tenant</Label>
-              <Select value={tenantId} onValueChange={(v) => setTenantId(v ?? "")}>
+              <Select
+                value={tenantId}
+                onValueChange={(v) => setTenantId(v ?? "")}
+                items={tenants.data?.data.map((t) => ({ value: t.id, label: t.businessName }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select tenant" />
                 </SelectTrigger>
@@ -128,6 +132,7 @@ export default function NewContractPage() {
                     setBuildingId(v ?? "");
                     setRoomId("");
                   }}
+                  items={buildings.data?.map((b) => ({ value: b.id, label: b.name }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select building" />
@@ -143,7 +148,14 @@ export default function NewContractPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Room</Label>
-                <Select value={roomId} onValueChange={(v) => setRoomId(v ?? "")} disabled={!buildingId}>
+                <Select
+                  value={roomId}
+                  onValueChange={(v) => setRoomId(v ?? "")}
+                  disabled={!buildingId}
+                  items={rooms.data
+                    ?.filter((r) => r.isActive)
+                    .map((r) => ({ value: r.id, label: `${r.roomNumber} (${r.status})` }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select room" />
                   </SelectTrigger>

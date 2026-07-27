@@ -32,6 +32,14 @@ const ACTION_TONE: Record<string, string> = {
   delete: "bg-destructive/10 text-destructive",
 };
 
+function formatIp(ip: string | null | undefined): string {
+  if (!ip) return "—";
+  let v = ip;
+  if (v.startsWith("::ffff:")) v = v.slice("::ffff:".length);
+  if (v === "::1") v = "127.0.0.1";
+  return v;
+}
+
 function prettyKey(k: string): string {
   return k
     .replace(/([A-Z])/g, " $1")
@@ -157,7 +165,7 @@ export default function AuditPage() {
                 <TableCell>
                   {log.entityType} <span className="text-muted-foreground">#{log.entityId.slice(-6)}</span>
                 </TableCell>
-                <TableCell className="tabular-nums text-muted-foreground">{log.ipAddress ?? "—"}</TableCell>
+                <TableCell className="tabular-nums text-muted-foreground">{formatIp(log.ipAddress)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -178,7 +186,7 @@ export default function AuditPage() {
             {selected && (
               <p className="text-sm text-muted-foreground">
                 {selected.user?.name ?? "System"} · {formatDate(selected.createdAt)}
-                {selected.ipAddress ? ` · ${selected.ipAddress}` : ""}
+                {selected.ipAddress ? ` · ${formatIp(selected.ipAddress)}` : ""}
               </p>
             )}
           </DialogHeader>

@@ -42,6 +42,10 @@ import {
 } from "@/components/ui/table";
 
 const STATUSES = ["all", "unpaid", "partial", "paid", "overdue", "voided"];
+const STATUS_ITEMS = STATUSES.map((s) => ({
+  value: s,
+  label: s === "all" ? "All statuses" : s[0].toUpperCase() + s.slice(1),
+}));
 
 export default function InvoicesPage() {
   const qc = useQueryClient();
@@ -77,12 +81,12 @@ export default function InvoicesPage() {
       />
 
       <div className="mb-4 w-48">
-        <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
+        <Select value={status} onValueChange={(v) => setStatus(v ?? "all")} items={STATUS_ITEMS}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">
-                {s === "all" ? "All statuses" : s}
+            {STATUS_ITEMS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
               </SelectItem>
             ))}
           </SelectContent>

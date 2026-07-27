@@ -155,6 +155,11 @@ All are marked `TODO: confirm with client` in code and behind settings/constants
 - **Security deposit** rule, **historical-import** column mapping, and the other §9 items above need client confirmation.
 - **Production hardening** — set a strong `SESSION_SECRET`, serve over HTTPS and set the session cookie `secure: true`, and provision a real SMTP host.
 
+## 8a. Post-build fixes (UI polish)
+
+- **Dropdowns showed raw values** — Base UI's `<Select.Value>` renders the raw selected value (a building **id**, or an enum like `vacant`/`super_admin`) unless `<Select.Root>` is given an `items` prop mapping values → labels. Added `items` to every `Select` (contracts/new, utilities, invoices, contracts list, reports, users, room-form-dialog) so triggers show human labels.
+- **Audit IP was `::1` / `::ffff:127.0.0.1`** — normalized loopback to `127.0.0.1` at capture (`main.ts` `clientIp()`) and on display (`audit/page.tsx` `formatIp()`, which also cleans pre-existing rows).
+
 ## 9. Known warnings (non-blocking)
 - **Prisma `$use` removed in v6** — auditing uses the Client extension API instead (documented above).
 - Stray `C:\Users\Dominic\package-lock.json` on the machine; `turbopack.root` is pinned so Next no longer warns.

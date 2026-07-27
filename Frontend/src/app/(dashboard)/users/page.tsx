@@ -166,7 +166,14 @@ export default function UsersPage() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label>Role</Label>
-                  <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as Role }))}>
+                  <Select
+                    value={form.role}
+                    onValueChange={(v) => setForm((f) => ({ ...f, role: v as Role }))}
+                    items={[
+                      { value: "admin", label: "Admin" },
+                      { value: "super_admin", label: "Super Admin" },
+                    ]}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>

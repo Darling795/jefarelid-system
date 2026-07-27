@@ -134,7 +134,15 @@ export function RoomFormDialog({
             {room && (
               <div className="col-span-2 flex flex-col gap-2">
                 <Label>Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as RoomStatus)}>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as RoomStatus)}
+                  items={[
+                    { value: "vacant", label: "Vacant" },
+                    { value: "occupied", label: "Occupied" },
+                    { value: "reserved", label: "Reserved" },
+                  ]}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
