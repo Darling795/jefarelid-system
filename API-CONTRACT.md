@@ -89,7 +89,10 @@ GET    /buildings            → list, each with roomCount and occupiedCount
 POST   /buildings            { name, address, notes }
 GET    /buildings/:id        → building with rooms
 PATCH  /buildings/:id
-DELETE /buildings/:id        → 409 BUILDING_HAS_ROOMS if not empty
+DELETE /buildings/:id        → 409 BUILDING_HAS_ROOMS if it still has rooms;
+                               409 BUILDING_HAS_UTILITY_HISTORY if it has paid
+                               utility bills. Otherwise removes the building and
+                               clears any unpaid utility bills.
 ```
 
 ---
@@ -101,7 +104,12 @@ GET    /buildings/:buildingId/rooms   → list
 POST   /buildings/:buildingId/rooms   { roomNumber, floor, areaSqm, baseRate }
 GET    /rooms/:id                     → room with currentContract and tenant
 PATCH  /rooms/:id
-DELETE /rooms/:id                     → soft delete; 409 ROOM_HAS_CONTRACTS
+DELETE /rooms/:id                     → removes the room if it never billed
+                                        (clearing empty draft/terminated
+                                        contracts); if it has invoice history it
+                                        is kept and marked inactive instead.
+                                        409 ROOM_HAS_CONTRACTS if a contract is
+                                        active.
 ```
 
 Room list item includes: `{ id, roomNumber, floor, areaSqm, baseRate, status, currentTenantName, contractEndDate }`

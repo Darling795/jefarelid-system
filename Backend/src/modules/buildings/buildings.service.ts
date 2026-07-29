@@ -71,6 +71,24 @@ export class BuildingsService {
         { roomCount },
       );
     }
+
+    // Utility bills reference the building. A bill that was actually paid is
+    // financial history and must be kept, so it blocks deletion. Unpaid bills
+    // (leftover test entries) carry no records and are cleared with the building.
+    const bills = await this.prisma.utilityBill.findMany({
+      where: { buildingId: id },
+      select: { id: true, _count: { select: { payments: true } } },
+    });
+    if (bills.some((b) => b._count.payments > 0)) {
+      throw new AppException(
+        ApiCode.BUILDING_HAS_UTILITY_HISTORY,
+        'Cannot delete a building with paid utility bills.',
+        HttpStatus.CONFLICT,
+      );
+    }
+    if (bills.length) {
+      await this.prisma.utilityBill.deleteMany({ where: { buildingId: id } });
+    }
     await this.prisma.building.delete({ where: { id } });
   }
 

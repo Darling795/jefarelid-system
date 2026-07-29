@@ -159,6 +159,10 @@ All are marked `TODO: confirm with client` in code and behind settings/constants
 
 - **Dropdowns showed raw values** — Base UI's `<Select.Value>` renders the raw selected value (a building **id**, or an enum like `vacant`/`super_admin`) unless `<Select.Root>` is given an `items` prop mapping values → labels. Added `items` to every `Select` (contracts/new, utilities, invoices, contracts list, reports, users, room-form-dialog) so triggers show human labels.
 - **Audit IP was `::1` / `::ffff:127.0.0.1`** — normalized loopback to `127.0.0.1` at capture (`main.ts` `clientIp()`) and on display (`audit/page.tsx` `formatIp()`, which also cleans pre-existing rows).
+- **A building with rooms could never be deleted** — "delete room" only ever soft-deleted (`isActive:false`), the row stayed, and building delete counted *all* rooms, so `roomCount` never reached 0 → permanent dead-end. Now **smart delete**, keyed on real financial records (invoices), not the mere existence of a contract:
+  - `rooms.service.remove()` — active contract → blocked (`ROOM_HAS_CONTRACTS`); any contract with invoice history → kept + marked inactive (protects frozen invoices, SPEC 6.4); otherwise the room is removed outright and its empty draft/terminated contracts are cleared first (Contract's only inbound FKs are `RentalInvoice` and the renewal self-relation, so an invoice-free delete is safe).
+  - `buildings.service.remove()` — still 409 `BUILDING_HAS_ROOMS` while rooms remain; then 409 `BUILDING_HAS_UTILITY_HISTORY` if any utility bill was paid; otherwise unpaid utility bills are cleared and the building is deleted. New `BUILDING_HAS_UTILITY_HISTORY` code added to `api-codes.ts` + `API-CONTRACT.md`.
+  - Frontend copy updated ("Deactivate" → "Remove") and the new utility-history error surfaced.
 
 ## 9. Known warnings (non-blocking)
 - **Prisma `$use` removed in v6** — auditing uses the Client extension API instead (documented above).

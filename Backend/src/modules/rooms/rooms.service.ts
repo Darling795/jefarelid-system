@@ -94,21 +94,44 @@ export class RoomsService {
   async remove(id: string): Promise<void> {
     const room = await this.prisma.room.findUnique({
       where: { id },
-      include: { contracts: { where: { status: 'active' }, select: { id: true } } },
+      include: { contracts: { select: { id: true, status: true } } },
     });
     if (!room) throw this.notFound();
-    if (room.contracts.length > 0) {
+
+    const hasActiveContract = room.contracts.some((c) => c.status === 'active');
+    if (hasActiveContract) {
       throw new AppException(
         ApiCode.ROOM_HAS_CONTRACTS,
-        'Cannot deactivate a room with an active contract.',
+        'Cannot remove a room with an active contract.',
         HttpStatus.CONFLICT,
       );
     }
-    // Soft delete: rooms with contract history are never hard-deleted (SPEC 6.4).
-    await this.prisma.room.update({
-      where: { id },
-      data: { isActive: false, status: 'vacant' },
-    });
+
+    // "History worth keeping" means actual frozen financial records — invoices.
+    // A room whose only contracts are drafts or terminated leases that never
+    // billed anything (e.g. leftover test data) has nothing to protect, so it
+    // is removed outright, clearing those empty contracts first for the FK.
+    // This is what lets an empty building finally be deleted. A room that did
+    // bill is kept for the record (SPEC 6.4) and only marked inactive.
+    const contractIds = room.contracts.map((c) => c.id);
+    const invoiceCount = contractIds.length
+      ? await this.prisma.rentalInvoice.count({
+          where: { contractId: { in: contractIds } },
+        })
+      : 0;
+
+    if (invoiceCount > 0) {
+      await this.prisma.room.update({
+        where: { id },
+        data: { isActive: false, status: 'vacant' },
+      });
+      return;
+    }
+
+    if (contractIds.length) {
+      await this.prisma.contract.deleteMany({ where: { id: { in: contractIds } } });
+    }
+    await this.prisma.room.delete({ where: { id } });
   }
 
   private async ensureBuilding(buildingId: string): Promise<void> {

@@ -53,10 +53,13 @@ export default function BuildingDetailPage() {
       router.replace("/buildings");
     },
     onError: (err) => {
-      const msg =
-        err instanceof ApiError && err.code === "BUILDING_HAS_ROOMS"
-          ? "Remove all rooms before deleting this building."
-          : "Could not delete building.";
+      let msg = "Could not delete building.";
+      if (err instanceof ApiError) {
+        if (err.code === "BUILDING_HAS_ROOMS")
+          msg = "Remove all rooms before deleting this building.";
+        else if (err.code === "BUILDING_HAS_UTILITY_HISTORY")
+          msg = "This building has paid utility bills and cannot be deleted.";
+      }
       toast.error(msg);
       setDeleteBuildingOpen(false);
     },
@@ -65,15 +68,15 @@ export default function BuildingDetailPage() {
   const removeRoom = useMutation({
     mutationFn: (roomId: string) => deleteRoom(roomId),
     onSuccess: async () => {
-      toast.success("Room deactivated.");
+      toast.success("Room removed.");
       await queryClient.invalidateQueries({ queryKey: ["building", id] });
       setRoomToDelete(null);
     },
     onError: (err) => {
       const msg =
         err instanceof ApiError && err.code === "ROOM_HAS_CONTRACTS"
-          ? "This room has an active contract and cannot be deactivated."
-          : "Could not deactivate room.";
+          ? "This room has an active contract and cannot be removed."
+          : "Could not remove room.";
       toast.error(msg);
       setRoomToDelete(null);
     },
@@ -225,9 +228,9 @@ export default function BuildingDetailPage() {
           <ConfirmDialog
             open={roomToDelete !== null}
             onOpenChange={(o) => !o && setRoomToDelete(null)}
-            title="Deactivate room?"
-            description="The room is marked inactive (kept for history). Rooms with an active contract cannot be deactivated."
-            confirmLabel="Deactivate"
+            title="Remove room?"
+            description="The room is removed. If it has billing or contract history it is kept for the record (marked inactive) instead. Rooms with an active contract cannot be removed."
+            confirmLabel="Remove"
             destructive
             loading={removeRoom.isPending}
             onConfirm={() => roomToDelete && removeRoom.mutate(roomToDelete.id)}
