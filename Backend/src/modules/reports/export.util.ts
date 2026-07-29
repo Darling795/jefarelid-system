@@ -75,19 +75,15 @@ export function toHtml(report: ReportTable): string {
 }
 
 /**
- * PDF via Puppeteer (SPEC stack). Puppeteer is imported lazily so the server
- * runs even when Chromium is not installed; the pdf format then returns a clear
- * error instead of crashing at boot.
+ * PDF via Puppeteer (SPEC stack). Imported lazily so Chromium is only spun up
+ * on demand (never at boot); if the browser fails to launch — e.g. Chromium was
+ * not downloaded on this host — the pdf format returns a clear error instead of
+ * a broken download.
  */
 export async function toPdf(report: ReportTable): Promise<Buffer> {
-  // Variable specifier keeps this a runtime-only dependency so the project
-  // builds and runs without puppeteer installed.
-  const moduleName = 'puppeteer';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let puppeteer: any;
+  let puppeteer: (typeof import('puppeteer'))['default'];
   try {
-    puppeteer = await import(moduleName);
-    puppeteer = puppeteer.default ?? puppeteer;
+    puppeteer = (await import('puppeteer')).default;
   } catch {
     throw new AppException(
       ApiCode.INTERNAL,

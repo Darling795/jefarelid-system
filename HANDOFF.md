@@ -151,7 +151,7 @@ All are marked `TODO: confirm with client` in code and behind settings/constants
 
 ## 8. Follow-ups before production
 
-- **PDF export** — reports do JSON + Excel out of the box. PDF uses Puppeteer, imported lazily; run `cd Backend && npm i puppeteer` to enable it (downloads Chromium). Until then, `format=pdf` returns a clear 501.
+- **PDF export** — enabled. `puppeteer` is a dependency (downloads Chromium on install) and `toPdf()` renders the report HTML to A4. Verified end-to-end (`GET /reports/occupancy?format=pdf` → `application/pdf`). If Chromium is ever missing on a host, `format=pdf` still fails gracefully with a clear 501; `xlsx`/`json` are unaffected.
 - **Security deposit** rule, **historical-import** column mapping, and the other §9 items above need client confirmation.
 - **Production hardening** — set a strong `SESSION_SECRET`, serve over HTTPS and set the session cookie `secure: true`, and provision a real SMTP host.
 
