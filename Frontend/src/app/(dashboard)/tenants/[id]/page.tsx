@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
-import { getTenant, getTenantPayments } from "@/lib/api/tenants";
+import { deleteTenant, getTenant, getTenantPayments } from "@/lib/api/tenants";
+import { ApiError } from "@/lib/api/types";
 import { formatDate, formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { TenantFormDialog } from "@/components/tenants/tenant-form-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,7 +37,10 @@ function Field({ label, value }: { label: string; value: string | null }) {
 
 export default function TenantDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["tenant", id],
@@ -43,6 +49,23 @@ export default function TenantDetailPage() {
   const paymentsQuery = useQuery({
     queryKey: ["tenant", id, "payments"],
     queryFn: () => getTenantPayments(id),
+  });
+
+  const removeTenant = useMutation({
+    mutationFn: () => deleteTenant(id),
+    onSuccess: async () => {
+      toast.success("Tenant removed.");
+      await queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      router.replace("/tenants");
+    },
+    onError: (err) => {
+      const msg =
+        err instanceof ApiError && err.code === "TENANT_HAS_ACTIVE_CONTRACT"
+          ? "This tenant has an active contract and cannot be removed."
+          : "Could not remove tenant.";
+      toast.error(msg);
+      setDeleteOpen(false);
+    },
   });
 
   return (
@@ -62,9 +85,14 @@ export default function TenantDetailPage() {
           <PageHeader
             title={data.businessName}
             action={
-              <Button variant="outline" onClick={() => setEditOpen(true)}>
-                <Pencil /> Edit
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditOpen(true)}>
+                  <Pencil /> Edit
+                </Button>
+                <Button variant="outline" onClick={() => setDeleteOpen(true)}>
+                  <Trash2 /> Delete
+                </Button>
+              </div>
             }
           />
 
@@ -178,6 +206,16 @@ export default function TenantDetailPage() {
           </Card>
 
           <TenantFormDialog open={editOpen} onOpenChange={setEditOpen} tenant={data} />
+          <ConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title="Remove tenant?"
+            description="The tenant is removed. If they have billing history they are kept for the record (marked inactive) instead. A tenant with an active contract cannot be removed."
+            confirmLabel="Remove"
+            destructive
+            loading={removeTenant.isPending}
+            onConfirm={() => removeTenant.mutate()}
+          />
         </>
       )}
     </div>

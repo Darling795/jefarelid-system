@@ -124,6 +124,11 @@ POST   /tenants              { businessName, contactPerson, contactNumber, email
 GET    /tenants/:id          → tenant with contracts, outstandingBalance
 PATCH  /tenants/:id
 GET    /tenants/:id/payments → payment history
+DELETE /tenants/:id          → removes the tenant if they never billed
+                               (clearing empty draft/terminated contracts); if
+                               they have invoice history the tenant is kept and
+                               marked inactive instead. 409
+                               TENANT_HAS_ACTIVE_CONTRACT if a contract is active.
 ```
 
 ---

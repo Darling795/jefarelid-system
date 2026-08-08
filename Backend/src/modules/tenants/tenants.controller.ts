@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -40,5 +42,11 @@ export class TenantsController {
   @Get(':id/payments')
   payments(@Param('id') id: string) {
     return this.tenants.payments(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id') id: string) {
+    return this.tenants.remove(id);
   }
 }

@@ -88,6 +88,10 @@ export async function updateTenant(
   return res.data.data;
 }
 
+export async function deleteTenant(id: string): Promise<void> {
+  await apiClient.delete(`/tenants/${id}`);
+}
+
 export async function getTenantPayments(id: string): Promise<TenantPayment[]> {
   const res = await apiClient.get<{ data: TenantPayment[] }>(
     `/tenants/${id}/payments`,

@@ -103,6 +103,47 @@ export class TenantsService {
     return this.findOne(id);
   }
 
+  async remove(id: string): Promise<void> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      include: { contracts: { select: { id: true, status: true } } },
+    });
+    if (!tenant) throw this.notFound();
+
+    if (tenant.contracts.some((c) => c.status === 'active')) {
+      throw new AppException(
+        ApiCode.TENANT_HAS_ACTIVE_CONTRACT,
+        'Cannot remove a tenant with an active contract.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    // "History worth keeping" means real financial records — invoices. A tenant
+    // whose contracts never billed anything (or who has no contracts at all,
+    // e.g. leftover test data) is removed outright, clearing those empty
+    // contracts first for the FK. A tenant that did bill is kept for the record
+    // and only marked inactive.
+    const contractIds = tenant.contracts.map((c) => c.id);
+    const invoiceCount = contractIds.length
+      ? await this.prisma.rentalInvoice.count({
+          where: { contractId: { in: contractIds } },
+        })
+      : 0;
+
+    if (invoiceCount > 0) {
+      await this.prisma.tenant.update({
+        where: { id },
+        data: { status: 'inactive' },
+      });
+      return;
+    }
+
+    if (contractIds.length) {
+      await this.prisma.contract.deleteMany({ where: { id: { in: contractIds } } });
+    }
+    await this.prisma.tenant.delete({ where: { id } });
+  }
+
   async payments(id: string) {
     await this.ensureExists(id);
     const payments = await this.prisma.rentalPayment.findMany({
