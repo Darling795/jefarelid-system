@@ -206,7 +206,7 @@ Omitting `contractId` on generate runs for all active contracts. Duplicate perio
 ## Payments
 
 ```
-GET    /payments                   → list; filters: tenantId, dateFrom, dateTo
+GET    /payments                   → list; filters: tenantId, buildingId, periodMonth (YYYY-MM), orNumber (partial), dateFrom, dateTo
 POST   /payments                   { invoiceId, amountPaid, paymentDate, orNumber, paymentMethod, remarks }
 GET    /payments/:id
 DELETE /payments/:id               { reason }  → Super Admin only

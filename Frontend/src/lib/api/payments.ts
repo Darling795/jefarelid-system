@@ -31,6 +31,9 @@ export interface CreatePaymentInput {
 
 export async function listPayments(params: {
   tenantId?: string;
+  buildingId?: string;
+  periodMonth?: string;
+  orNumber?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;

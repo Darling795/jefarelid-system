@@ -81,12 +81,27 @@ export class PaymentsService {
     page?: string;
     pageSize?: string;
     tenantId?: string;
+    buildingId?: string;
+    periodMonth?: string;
+    orNumber?: string;
     dateFrom?: string;
     dateTo?: string;
   }) {
     const { page, pageSize, skip, take } = parsePagination(query);
     const where: Prisma.RentalPaymentWhereInput = {};
-    if (query.tenantId) where.invoice = { contract: { tenantId: query.tenantId } };
+
+    // Tenant, building and billing period all constrain the payment's invoice.
+    const contractWhere: Prisma.ContractWhereInput = {};
+    if (query.tenantId) contractWhere.tenantId = query.tenantId;
+    if (query.buildingId) contractWhere.room = { buildingId: query.buildingId };
+    const invoiceWhere: Prisma.RentalInvoiceWhereInput = {};
+    if (query.periodMonth) invoiceWhere.periodMonth = query.periodMonth;
+    if (Object.keys(contractWhere).length) invoiceWhere.contract = contractWhere;
+    if (Object.keys(invoiceWhere).length) where.invoice = invoiceWhere;
+
+    if (query.orNumber) {
+      where.orNumber = { contains: query.orNumber, mode: 'insensitive' };
+    }
     if (query.dateFrom || query.dateTo) {
       where.paymentDate = {};
       if (query.dateFrom) where.paymentDate.gte = new Date(`${query.dateFrom}T00:00:00.000Z`);

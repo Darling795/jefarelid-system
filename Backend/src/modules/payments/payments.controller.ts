@@ -22,7 +22,16 @@ export class PaymentsController {
   @Get()
   list(
     @Query()
-    query: { page?: string; pageSize?: string; tenantId?: string; dateFrom?: string; dateTo?: string },
+    query: {
+      page?: string;
+      pageSize?: string;
+      tenantId?: string;
+      buildingId?: string;
+      periodMonth?: string;
+      orNumber?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    },
   ) {
     return this.payments.list(query);
   }
