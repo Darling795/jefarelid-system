@@ -116,6 +116,22 @@ Room list item includes: `{ id, roomNumber, floor, areaSqm, baseRate, status, cu
 
 ---
 
+## Documents (local-disk file uploads)
+
+```
+POST   /tenants/:id/documents      (multipart: file, label?, category?) → uploads a tenant requirement (permit/clearance/etc.)
+GET    /tenants/:id/documents      → list a tenant's documents (metadata)
+POST   /contracts/:id/documents    (multipart: file, label?, category?) → upload a contract file (e.g. signed lease)
+GET    /contracts/:id/documents    → list a contract's documents
+GET    /documents/:id/file         → stream the file (inline; session cookie required)
+DELETE /documents/:id              → remove a document (row + on-disk file)
+```
+
+Files are stored under the backend's `uploads/` directory (gitignored). Document
+metadata: `{ id, label, category, fileName, mimeType, sizeBytes, uploadedAt }`.
+
+---
+
 ## Tenants
 
 ```

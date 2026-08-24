@@ -106,6 +106,7 @@ model Tenant {
   notes         String?
 
   contracts Contract[]
+  documents Document[]
 
   @@map("tenants")
 }
@@ -131,10 +132,11 @@ model Contract {
   createdAt            DateTime       @default(now()) @map("created_at")
   updatedAt            DateTime       @updatedAt @map("updated_at")
 
-  tenant   Tenant          @relation(fields: [tenantId], references: [id])
-  room     Room            @relation(fields: [roomId], references: [id])
-  rooms    ContractRoom[]
-  invoices RentalInvoice[]
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  room      Room            @relation(fields: [roomId], references: [id])
+  rooms     ContractRoom[]
+  invoices  RentalInvoice[]
+  documents Document[]
 
   // Self-relation: a renewal points back to the contract it replaced.
   parentContract Contract?  @relation("ContractRenewal", fields: [parentContractId], references: [id])
@@ -144,6 +146,29 @@ model Contract {
   @@index([roomId])
   @@index([status])
   @@map("contracts")
+}
+
+// Uploaded files stored on local disk. A document belongs to a tenant (e.g. a
+// permit or clearance requirement) or a contract (e.g. the signed lease). The
+// bytes live under the uploads dir; this row holds the metadata.
+model Document {
+  id         String   @id @default(cuid())
+  tenantId   String?  @map("tenant_id")
+  contractId String?  @map("contract_id")
+  label      String
+  category   String?
+  fileName   String   @map("file_name")
+  storedName String   @map("stored_name")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@map("documents")
 }
 
 // Rooms covered by a contract. A contract has one primary room (Contract.roomId,

@@ -13,6 +13,7 @@ import { formatDate, formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { TenantFormDialog } from "@/components/tenants/tenant-form-dialog";
+import { DocumentsPanel } from "@/components/documents/documents-panel";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -204,6 +205,15 @@ export default function TenantDetailPage() {
               </TableBody>
             </Table>
           </Card>
+
+          <div className="mt-6">
+            <DocumentsPanel
+              kind="tenant"
+              ownerId={id}
+              title="Requirements & documents"
+              description="Permits, clearances, and other files required before renting."
+            />
+          </div>
 
           <TenantFormDialog open={editOpen} onOpenChange={setEditOpen} tenant={data} />
           <ConfirmDialog

@@ -18,6 +18,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SearchModule } from './modules/search/search.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { SearchModule } from './modules/search/search.module';
     ReportsModule,
     NotificationsModule,
     SearchModule,
+    DocumentsModule,
   ],
 })
 export class AppModule {}

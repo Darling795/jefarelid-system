@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, FilePlus2, LoaderCircle, RefreshCw, Ban, Play } from "lucide-react";
+import { ArrowLeft, FilePlus2, FileText, LoaderCircle, RefreshCw, Ban, Play } from "lucide-react";
 
 import {
   activateContract,
@@ -19,6 +19,8 @@ import { formatDate, formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DocumentsPanel } from "@/components/documents/documents-panel";
+import { PrintableContract } from "@/components/contracts/printable-contract";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -127,7 +129,8 @@ export default function ContractDetailPage() {
   const canManage = raw === "active" || raw === "expiring";
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <>
+    <div className="mx-auto max-w-5xl print:hidden">
       <Link
         href="/contracts"
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -148,6 +151,9 @@ export default function ContractDetailPage() {
             }`}
             action={
               <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => window.print()}>
+                  <FileText /> Generate contract
+                </Button>
                 {canActivate && (
                   <Button onClick={() => setActivateOpen(true)}>
                     <Play /> Activate
@@ -242,6 +248,15 @@ export default function ContractDetailPage() {
               </TableBody>
             </Table>
           </Card>
+
+          <div className="mt-6">
+            <DocumentsPanel
+              kind="contract"
+              ownerId={id}
+              title="Contract documents"
+              description="Upload the signed lease or related files. Use “Generate contract” above to print a ready-to-notarize copy."
+            />
+          </div>
 
           <ConfirmDialog
             open={activateOpen}
@@ -345,5 +360,7 @@ export default function ContractDetailPage() {
         </>
       )}
     </div>
+    {data && <PrintableContract contract={data} />}
+    </>
   );
 }

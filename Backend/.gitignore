@@ -16,3 +16,6 @@ npm-debug.log*
 
 # OS
 .DS_Store
+
+# Uploaded files (local disk storage)
+uploads/
