@@ -255,7 +255,11 @@ Errors: `OVERPAYMENT`, `INVOICE_VOIDED`, `DUPLICATE_OR_NUMBER`.
 
 ```
 GET    /utility-bills              → filters: buildingId, utilityType, status, periodFrom, periodTo
-POST   /utility-bills              { buildingId, utilityType, billingPeriod, amount, dueDate }
+POST   /utility-bills              { buildingId, utilityType, billingPeriod, dueDate,
+                                     amount? | (previousReading?, currentReading, ratePerUnit) }
+                                     → if currentReading+ratePerUnit given, amount =
+                                     (current − previous) × rate; else `amount` is required.
+                                     List/detail also return previousReading, currentReading, consumption.
 GET    /utility-bills/:id
 PATCH  /utility-bills/:id
 POST   /utility-bills/:id/payments { amountPaid, paymentDate, voucherNumber, orNumber }

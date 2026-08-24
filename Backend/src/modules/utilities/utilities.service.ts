@@ -65,12 +65,19 @@ export class UtilitiesService {
         (a, p) => a.add(p.amountPaid),
         new Prisma.Decimal(0),
       );
+      const consumption =
+        b.currentReading != null && b.previousReading != null
+          ? b.currentReading.sub(b.previousReading).toFixed(2)
+          : null;
       return {
         id: b.id,
         buildingId: b.buildingId,
         buildingName: b.building.name,
         utilityType: b.utilityType,
         billingPeriod: b.billingPeriod,
+        previousReading: money(b.previousReading),
+        currentReading: money(b.currentReading),
+        consumption,
         amount: money(b.amount),
         amountPaid: paid.toFixed(2),
         balance: b.amount.sub(paid).toFixed(2),
@@ -95,17 +102,54 @@ export class UtilitiesService {
         HttpStatus.NOT_FOUND,
       );
     }
+    const amount = this.resolveAmount(dto);
     const bill = await this.prisma.utilityBill.create({
       data: {
         buildingId: dto.buildingId,
         utilityType: dto.utilityType,
         billingPeriod: dto.billingPeriod,
-        amount: dto.amount,
+        previousReading: dto.previousReading ?? null,
+        currentReading: dto.currentReading ?? null,
+        ratePerUnit: dto.ratePerUnit ?? null,
+        amount,
         dueDate: new Date(`${dto.dueDate}T00:00:00.000Z`),
         status: 'unpaid',
       },
     });
     return this.findOne(bill.id);
+  }
+
+  /**
+   * The charge. If a current reading and a rate are given, it is computed as
+   * (current − previous) × rate; otherwise the caller must supply `amount`.
+   */
+  private resolveAmount(dto: {
+    previousReading?: string;
+    currentReading?: string;
+    ratePerUnit?: string;
+    amount?: string;
+  }): string {
+    if (dto.currentReading != null && dto.ratePerUnit != null) {
+      const prev = new Prisma.Decimal(dto.previousReading ?? '0');
+      const curr = new Prisma.Decimal(dto.currentReading);
+      if (curr.lessThan(prev)) {
+        throw new AppException(
+          ApiCode.VALIDATION_ERROR,
+          'Current reading cannot be lower than the previous reading.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const consumption = curr.sub(prev);
+      return consumption.mul(new Prisma.Decimal(dto.ratePerUnit)).toDecimalPlaces(2).toFixed(2);
+    }
+    if (dto.amount == null || dto.amount === '') {
+      throw new AppException(
+        ApiCode.VALIDATION_ERROR,
+        'Provide either a meter reading with a rate, or an amount.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return dto.amount;
   }
 
   async findOne(id: string) {
@@ -121,11 +165,19 @@ export class UtilitiesService {
       (a, p) => a.add(p.amountPaid),
       new Prisma.Decimal(0),
     );
+    const consumption =
+      b.currentReading != null && b.previousReading != null
+        ? b.currentReading.sub(b.previousReading).toFixed(2)
+        : null;
     return {
       id: b.id,
       building: b.building,
       utilityType: b.utilityType,
       billingPeriod: b.billingPeriod,
+      previousReading: money(b.previousReading),
+      currentReading: money(b.currentReading),
+      ratePerUnit: b.ratePerUnit != null ? b.ratePerUnit.toFixed(4) : null,
+      consumption,
       amount: money(b.amount),
       amountPaid: paid.toFixed(2),
       balance: b.amount.sub(paid).toFixed(2),

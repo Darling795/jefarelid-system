@@ -15,6 +15,9 @@ export interface UtilityBillListItem {
   buildingName: string;
   utilityType: UtilityType;
   billingPeriod: string;
+  previousReading: string | null;
+  currentReading: string | null;
+  consumption: string | null;
   amount: string;
   amountPaid: string;
   balance: string;
@@ -60,7 +63,10 @@ export async function createUtilityBill(input: {
   buildingId: string;
   utilityType: UtilityType;
   billingPeriod: string;
-  amount: string;
+  previousReading?: string;
+  currentReading?: string;
+  ratePerUnit?: string;
+  amount?: string;
   dueDate: string;
 }): Promise<UtilityBillDetail> {
   const res = await apiClient.post("/utility-bills", input);

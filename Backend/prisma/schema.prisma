@@ -236,6 +236,10 @@ model UtilityBill {
   buildingId    String            @map("building_id")
   utilityType   String            @map("utility_type")
   billingPeriod String            @map("billing_period") // YYYY-MM
+  // Optional meter reading: when present, amount = (current - previous) × rate.
+  previousReading Decimal?        @map("previous_reading") @db.Decimal(14, 2)
+  currentReading  Decimal?        @map("current_reading") @db.Decimal(14, 2)
+  ratePerUnit     Decimal?        @map("rate_per_unit") @db.Decimal(14, 4)
   amount        Decimal           @db.Decimal(14, 2)
   dueDate       DateTime          @map("due_date") @db.Date
   status        UtilityBillStatus @default(unpaid)

@@ -51,18 +51,50 @@ export default function UtilitiesPage() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [payFor, setPayFor] = useState<UtilityBillListItem | null>(null);
-  const [bill, setBill] = useState({ buildingId: "", utilityType: "electric" as UtilityType, billingPeriod: "", amount: "", dueDate: "" });
+  const EMPTY_BILL = {
+    buildingId: "",
+    utilityType: "electric" as UtilityType,
+    billingPeriod: "",
+    previousReading: "",
+    currentReading: "",
+    ratePerUnit: "",
+    amount: "",
+    dueDate: "",
+  };
+  const [bill, setBill] = useState(EMPTY_BILL);
   const [payment, setPayment] = useState({ amountPaid: "", paymentDate: "", voucherNumber: "", orNumber: "" });
+
+  // Live preview: when a current reading + rate are entered, the charge is
+  // computed from the meter reading; otherwise the typed amount is used.
+  const usesMeter = bill.currentReading.trim() !== "" && bill.ratePerUnit.trim() !== "";
+  const consumption = usesMeter
+    ? Number(bill.currentReading) - Number(bill.previousReading || 0)
+    : null;
+  const computedAmount =
+    usesMeter && consumption !== null ? (consumption * Number(bill.ratePerUnit)).toFixed(2) : null;
 
   const buildings = useQuery({ queryKey: ["buildings"], queryFn: listBuildings });
   const bills = useQuery({ queryKey: ["utility-bills"], queryFn: () => listUtilityBills({}) });
 
   const create = useMutation({
-    mutationFn: () => createUtilityBill(bill),
+    mutationFn: () =>
+      createUtilityBill({
+        buildingId: bill.buildingId,
+        utilityType: bill.utilityType,
+        billingPeriod: bill.billingPeriod,
+        dueDate: bill.dueDate,
+        ...(usesMeter
+          ? {
+              previousReading: bill.previousReading || "0",
+              currentReading: bill.currentReading,
+              ratePerUnit: bill.ratePerUnit,
+            }
+          : { amount: bill.amount }),
+      }),
     onSuccess: async () => {
       toast.success("Utility bill recorded.");
       setCreateOpen(false);
-      setBill({ buildingId: "", utilityType: "electric", billingPeriod: "", amount: "", dueDate: "" });
+      setBill(EMPTY_BILL);
       await qc.invalidateQueries({ queryKey: ["utility-bills"] });
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not record bill."),
@@ -83,7 +115,7 @@ export default function UtilitiesPage() {
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Utilities"
-        description="Telephone and internet bills per building (company expense)."
+        description="Utility bills per building (company expense). Electricity and water can be computed from meter readings."
         action={<Button onClick={() => setCreateOpen(true)}><Plus /> New bill</Button>}
       />
 
@@ -94,6 +126,7 @@ export default function UtilitiesPage() {
               <TableHead>Period</TableHead>
               <TableHead>Building</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead className="text-right">Consumption</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="text-right">Balance</TableHead>
               <TableHead>Due</TableHead>
@@ -104,11 +137,11 @@ export default function UtilitiesPage() {
           <TableBody>
             {bills.isLoading &&
               Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))}
             {bills.data?.data.length === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="p-0">
+                <TableCell colSpan={9} className="p-0">
                   <EmptyState
                     icon={Zap}
                     title="No utility bills yet"
@@ -127,6 +160,9 @@ export default function UtilitiesPage() {
                 <TableCell>{formatPeriod(b.billingPeriod)}</TableCell>
                 <TableCell>{b.buildingName}</TableCell>
                 <TableCell className="capitalize">{b.utilityType}</TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
+                  {b.consumption ?? "—"}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPHP(b.amount)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatPHP(b.balance)}</TableCell>
                 <TableCell>{formatDate(b.dueDate)}</TableCell>
@@ -183,12 +219,46 @@ export default function UtilitiesPage() {
                 <Input required pattern="\d{4}-\d{2}" placeholder="2026-07" value={bill.billingPeriod} onChange={(e) => setBill((f) => ({ ...f, billingPeriod: e.target.value }))} />
               </div>
               <div className="flex flex-col gap-2">
-                <Label>Amount (PHP)</Label>
-                <Input inputMode="decimal" required value={bill.amount} onChange={(e) => setBill((f) => ({ ...f, amount: e.target.value }))} />
-              </div>
-              <div className="flex flex-col gap-2">
                 <Label>Due date</Label>
                 <Input type="date" required value={bill.dueDate} onChange={(e) => setBill((f) => ({ ...f, dueDate: e.target.value }))} />
+              </div>
+
+              <div className="col-span-2 mt-1 rounded-lg border p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  Meter reading (optional) — the charge is computed from consumption × rate
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Previous reading</Label>
+                    <Input inputMode="decimal" value={bill.previousReading} onChange={(e) => setBill((f) => ({ ...f, previousReading: e.target.value }))} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Current reading</Label>
+                    <Input inputMode="decimal" value={bill.currentReading} onChange={(e) => setBill((f) => ({ ...f, currentReading: e.target.value }))} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Rate per unit</Label>
+                    <Input inputMode="decimal" value={bill.ratePerUnit} onChange={(e) => setBill((f) => ({ ...f, ratePerUnit: e.target.value }))} />
+                  </div>
+                </div>
+                {usesMeter && (
+                  <p className="mt-2 text-sm">
+                    Consumption <b>{consumption}</b> × rate {bill.ratePerUnit} ={" "}
+                    <b>{formatPHP(computedAmount)}</b>
+                  </p>
+                )}
+              </div>
+
+              <div className="col-span-2 flex flex-col gap-2">
+                <Label>Amount (PHP){usesMeter ? " — computed from reading" : ""}</Label>
+                <Input
+                  inputMode="decimal"
+                  required={!usesMeter}
+                  disabled={usesMeter}
+                  value={usesMeter ? computedAmount ?? "" : bill.amount}
+                  onChange={(e) => setBill((f) => ({ ...f, amount: e.target.value }))}
+                  placeholder={usesMeter ? "" : "Enter amount, or use a meter reading above"}
+                />
               </div>
             </div>
             <DialogFooter>
