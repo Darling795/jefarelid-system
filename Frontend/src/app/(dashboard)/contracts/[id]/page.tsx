@@ -141,7 +141,11 @@ export default function ContractDetailPage() {
         <>
           <PageHeader
             title={data.tenant.businessName}
-            description={`${data.room.building.name} · Room ${data.room.roomNumber}`}
+            description={`${data.rooms[0]?.building.name ?? data.room.building.name} · ${
+              data.rooms.length > 1
+                ? `Rooms ${data.rooms.map((r) => r.roomNumber).join(", ")}`
+                : `Room ${data.rooms[0]?.roomNumber ?? data.room.roomNumber}`
+            }`}
             action={
               <div className="flex flex-wrap gap-2">
                 {canActivate && (
@@ -174,6 +178,14 @@ export default function ContractDetailPage() {
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="col-span-2 sm:col-span-4">
+                  <dt className="text-xs text-muted-foreground">
+                    Room{data.rooms.length > 1 ? "s" : ""}
+                  </dt>
+                  <dd className="text-sm">
+                    {data.rooms.map((r) => r.roomNumber).join(", ")}
+                  </dd>
+                </div>
                 <Field label="Start" value={formatDate(data.startDate)} />
                 <Field label="End" value={formatDate(data.endDate)} />
                 <Field label="Basic rent" value={formatPHP(data.basicRent)} />

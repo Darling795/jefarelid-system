@@ -151,6 +151,7 @@ export class InvoicesService {
             room: {
               select: { roomNumber: true, building: { select: { name: true } } },
             },
+            rooms: { include: { room: { select: { roomNumber: true } } } },
           },
         },
         payments: { orderBy: { paymentDate: 'desc' } },
@@ -160,11 +161,17 @@ export class InvoicesService {
 
     const paid = sumPaid(inv.payments);
     const balance = inv.netReceivable.sub(paid);
+    // All rooms covered by the lease (fall back to the primary for legacy data).
+    const roomNumbers =
+      inv.contract.rooms.length > 0
+        ? inv.contract.rooms.map((cr) => cr.room.roomNumber)
+        : [inv.contract.room.roomNumber];
     return {
       id: inv.id,
       contractId: inv.contractId,
       tenant: inv.contract.tenant,
       roomNumber: inv.contract.room.roomNumber,
+      roomNumbers,
       buildingName: inv.contract.room.building.name,
       periodMonth: inv.periodMonth,
       basicRentApplied: money(inv.basicRentApplied),

@@ -107,7 +107,11 @@ export default function InvoiceDetailPage() {
         <>
           <PageHeader
             title={`Invoice · ${formatPeriod(data.periodMonth)}`}
-            description={`${data.tenant.businessName} · ${data.buildingName} ${data.roomNumber}`}
+            description={`${data.tenant.businessName} · ${data.buildingName} ${
+              data.roomNumbers.length > 1
+                ? `Rooms ${data.roomNumbers.join(", ")}`
+                : data.roomNumbers[0] ?? data.roomNumber
+            }`}
             action={
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => window.print()}><Printer /> Print</Button>

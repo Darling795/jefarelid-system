@@ -29,6 +29,7 @@ export interface InvoiceDetail {
   contractId: string;
   tenant: { id: string; businessName: string };
   roomNumber: string;
+  roomNumbers: string[];
   buildingName: string;
   periodMonth: string;
   basicRentApplied: string;

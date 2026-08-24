@@ -136,17 +136,20 @@ export class ContractsService {
       );
     }
 
-    const room = await this.prisma.room.findUnique({ where: { id: dto.roomId } });
-    if (!room) throw this.notFound('Room');
-    if (!room.isActive) {
+    // Resolve the room set (roomIds preferred; roomId accepted for one room).
+    const roomIds = this.resolveRoomIds(dto);
+    const rooms = await this.prisma.room.findMany({ where: { id: { in: roomIds } } });
+    if (rooms.length !== roomIds.length) throw this.notFound('Room');
+    const inactive = rooms.find((r) => !r.isActive);
+    if (inactive) {
       throw new AppException(
         ApiCode.ROOM_INACTIVE,
-        'Room is inactive.',
+        `Room ${inactive.roomNumber} is inactive.`,
         HttpStatus.CONFLICT,
       );
     }
 
-    await this.assertNoOverlap(dto.roomId, start, end);
+    for (const rid of roomIds) await this.assertNoOverlap(rid, start, end);
 
     let escalationRate = dto.escalationRate;
     if (!escalationRate) {
@@ -159,7 +162,8 @@ export class ContractsService {
     const contract = await this.prisma.contract.create({
       data: {
         tenantId: dto.tenantId,
-        roomId: dto.roomId,
+        roomId: roomIds[0], // primary room (display/back-compat)
+        rooms: { create: roomIds.map((roomId) => ({ roomId })) },
         startDate: start,
         endDate: end,
         basicRent: dto.basicRent,
@@ -176,6 +180,32 @@ export class ContractsService {
     return this.findOne(contract.id);
   }
 
+  /** The full set of rooms a create request covers, de-duplicated, order kept. */
+  private resolveRoomIds(dto: CreateContractDto): string[] {
+    const ids = dto.roomIds?.length ? dto.roomIds : dto.roomId ? [dto.roomId] : [];
+    const seen = new Set<string>();
+    const unique = ids.filter((id) => (seen.has(id) ? false : (seen.add(id), true)));
+    if (unique.length === 0) {
+      throw new AppException(
+        ApiCode.VALIDATION_ERROR,
+        'At least one room is required.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return unique;
+  }
+
+  /** All room ids a contract covers (from the join table, primary first). */
+  private async roomIdsOf(contractId: string, primaryRoomId: string): Promise<string[]> {
+    const links = await this.prisma.contractRoom.findMany({
+      where: { contractId },
+      select: { roomId: true },
+    });
+    const ids = links.map((l) => l.roomId);
+    // Guard for any legacy contract without join rows.
+    return ids.length ? ids : [primaryRoomId];
+  }
+
   async findOne(id: string) {
     const c = await this.prisma.contract.findUnique({
       where: { id },
@@ -188,16 +218,38 @@ export class ContractsService {
             building: { select: { id: true, name: true } },
           },
         },
+        rooms: {
+          include: {
+            room: {
+              select: {
+                id: true,
+                roomNumber: true,
+                building: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
         invoices: { orderBy: { periodMonth: 'desc' } },
         parentContract: { select: { id: true } },
       },
     });
     if (!c) throw this.notFound('Contract');
 
+    // All rooms on the lease (fall back to the primary for any legacy contract).
+    const rooms =
+      c.rooms.length > 0
+        ? c.rooms.map((cr) => ({
+            id: cr.room.id,
+            roomNumber: cr.room.roomNumber,
+            building: cr.room.building,
+          }))
+        : [{ id: c.room.id, roomNumber: c.room.roomNumber, building: c.room.building }];
+
     return {
       id: c.id,
       tenant: c.tenant,
       room: { id: c.room.id, roomNumber: c.room.roomNumber, building: c.room.building },
+      rooms,
       startDate: dateOnly(c.startDate),
       endDate: dateOnly(c.endDate),
       basicRent: money(c.basicRent),
@@ -253,10 +305,11 @@ export class ContractsService {
         HttpStatus.CONFLICT,
       );
     }
-    await this.assertNoOverlap(c.roomId, c.startDate, c.endDate, c.id);
+    const roomIds = await this.roomIdsOf(c.id, c.roomId);
+    for (const rid of roomIds) await this.assertNoOverlap(rid, c.startDate, c.endDate, c.id);
     await this.prisma.contract.update({ where: { id }, data: { status: 'active' } });
-    await this.prisma.room.update({
-      where: { id: c.roomId },
+    await this.prisma.room.updateMany({
+      where: { id: { in: roomIds } },
       data: { status: 'occupied' },
     });
     return this.findOne(id);
@@ -289,10 +342,14 @@ export class ContractsService {
     const carried = escalate(c.basicRent.toString(), c.escalationRate.toString(), periods);
     const newBasicRent = dto.basicRent ?? carried.toFixed(2);
 
+    // Carry the full room set forward onto the renewal.
+    const roomIds = await this.roomIdsOf(c.id, c.roomId);
+
     const renewal = await this.prisma.contract.create({
       data: {
         tenantId: c.tenantId,
         roomId: c.roomId,
+        rooms: { create: roomIds.map((roomId) => ({ roomId })) },
         startDate: start,
         endDate: end,
         basicRent: newBasicRent,
@@ -306,7 +363,7 @@ export class ContractsService {
       },
     });
     await this.prisma.contract.update({ where: { id: c.id }, data: { status: 'renewed' } });
-    await this.prisma.room.update({ where: { id: c.roomId }, data: { status: 'occupied' } });
+    await this.prisma.room.updateMany({ where: { id: { in: roomIds } }, data: { status: 'occupied' } });
 
     return this.findOne(renewal.id);
   }
@@ -330,7 +387,8 @@ export class ContractsService {
     });
     // TODO: confirm with client — security deposit refund/forfeiture rules on
     // termination (SPEC §9). Deposit settlement is recorded manually for now.
-    await this.prisma.room.update({ where: { id: c.roomId }, data: { status: 'vacant' } });
+    const roomIds = await this.roomIdsOf(c.id, c.roomId);
+    await this.prisma.room.updateMany({ where: { id: { in: roomIds } }, data: { status: 'vacant' } });
     return this.findOne(id);
   }
 
@@ -342,7 +400,8 @@ export class ContractsService {
   ): Promise<void> {
     const conflict = await this.prisma.contract.findFirst({
       where: {
-        roomId,
+        // Any active contract that covers this room (as primary or additional).
+        rooms: { some: { roomId } },
         status: 'active',
         startDate: { lte: end },
         endDate: { gte: start },

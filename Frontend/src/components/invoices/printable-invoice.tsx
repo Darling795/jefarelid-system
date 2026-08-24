@@ -53,7 +53,10 @@ export function PrintableInvoice({ invoice }: { invoice: InvoiceDetail }) {
               Property
             </p>
             <p>{invoice.buildingName}</p>
-            <p>Room {invoice.roomNumber}</p>
+            <p>
+              {invoice.roomNumbers.length > 1 ? "Rooms " : "Room "}
+              {(invoice.roomNumbers.length ? invoice.roomNumbers : [invoice.roomNumber]).join(", ")}
+            </p>
           </div>
         </div>
 

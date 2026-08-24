@@ -2,12 +2,18 @@ import { Prisma } from '@prisma/client';
 
 import { dateOnly, money } from '../../common/http/serialize';
 
-/** Include used to derive a room's current occupancy from its active contract. */
+/**
+ * Include used to derive a room's current occupancy from its active contract.
+ * Uses the ContractRoom join so a room shows its lease whether it is the
+ * primary room or an additional room on a multi-room contract.
+ */
 export const roomListInclude = Prisma.validator<Prisma.RoomInclude>()({
-  contracts: {
-    where: { status: 'active' },
-    include: { tenant: { select: { businessName: true } } },
-    orderBy: { startDate: 'desc' },
+  contractRooms: {
+    where: { contract: { status: 'active' } },
+    include: {
+      contract: { include: { tenant: { select: { businessName: true } } } },
+    },
+    orderBy: { contract: { startDate: 'desc' } },
     take: 1,
   },
 });
@@ -16,7 +22,7 @@ export type RoomListRow = Prisma.RoomGetPayload<{ include: typeof roomListInclud
 
 /** Room list item (API-CONTRACT.md → Rooms). Occupancy derived from active contract. */
 export function mapRoomListItem(room: RoomListRow) {
-  const active = room.contracts[0];
+  const active = room.contractRooms[0]?.contract;
   return {
     id: room.id,
     roomNumber: room.roomNumber,

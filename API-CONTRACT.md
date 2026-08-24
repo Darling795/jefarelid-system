@@ -148,10 +148,15 @@ GET    /contracts/archive          → expired and terminated
 
 **Create body:**
 
+A contract can cover multiple rooms. Create accepts `roomIds: string[]` (preferred;
+`roomId` still accepted for a single room). The lease's full room set is returned as
+`rooms[]` on the contract, and as `roomNumbers[]` on its invoices. `basicRent` is the
+total across rooms (the UI defaults it to the sum of the rooms' base rates).
+
 ```json
 {
   "tenantId": "...",
-  "roomId": "...",
+  "roomIds": ["...", "..."],
   "startDate": "2026-01-01",
   "endDate": "2027-12-31",
   "basicRent": "25000.00",

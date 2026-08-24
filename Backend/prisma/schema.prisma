@@ -84,8 +84,9 @@ model Room {
   status     RoomStatus @default(vacant)
   isActive   Boolean    @default(true) @map("is_active")
 
-  building  Building   @relation(fields: [buildingId], references: [id])
-  contracts Contract[]
+  building      Building       @relation(fields: [buildingId], references: [id])
+  contracts     Contract[]
+  contractRooms ContractRoom[]
 
   @@index([buildingId])
   @@map("rooms")
@@ -132,6 +133,7 @@ model Contract {
 
   tenant   Tenant          @relation(fields: [tenantId], references: [id])
   room     Room            @relation(fields: [roomId], references: [id])
+  rooms    ContractRoom[]
   invoices RentalInvoice[]
 
   // Self-relation: a renewal points back to the contract it replaced.
@@ -142,6 +144,22 @@ model Contract {
   @@index([roomId])
   @@index([status])
   @@map("contracts")
+}
+
+// Rooms covered by a contract. A contract has one primary room (Contract.roomId,
+// kept for display/back-compat) plus a row here for every room it covers — this
+// join table is the source of truth for the full room set of a lease.
+model ContractRoom {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  roomId     String @map("room_id")
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  room     Room     @relation(fields: [roomId], references: [id])
+
+  @@unique([contractId, roomId])
+  @@index([roomId])
+  @@map("contract_rooms")
 }
 
 // ── Rental invoices & payments ───────────────────────────────────────────

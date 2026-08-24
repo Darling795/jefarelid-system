@@ -40,17 +40,21 @@ export class RoomsService {
       where: { id },
       include: {
         building: { select: { id: true, name: true } },
-        contracts: {
-          where: { status: 'active' },
-          include: { tenant: { select: { id: true, businessName: true } } },
-          orderBy: { startDate: 'desc' },
+        contractRooms: {
+          where: { contract: { status: 'active' } },
+          include: {
+            contract: {
+              include: { tenant: { select: { id: true, businessName: true } } },
+            },
+          },
+          orderBy: { contract: { startDate: 'desc' } },
           take: 1,
         },
       },
     });
     if (!room) throw this.notFound();
 
-    const active = room.contracts[0];
+    const active = room.contractRooms[0]?.contract;
     return {
       id: room.id,
       roomNumber: room.roomNumber,
@@ -94,43 +98,63 @@ export class RoomsService {
   async remove(id: string): Promise<void> {
     const room = await this.prisma.room.findUnique({
       where: { id },
-      include: { contracts: { select: { id: true, status: true } } },
+      include: { contractRooms: { select: { contractId: true } } },
     });
     if (!room) throw this.notFound();
 
-    const hasActiveContract = room.contracts.some((c) => c.status === 'active');
-    if (hasActiveContract) {
-      throw new AppException(
-        ApiCode.ROOM_HAS_CONTRACTS,
-        'Cannot remove a room with an active contract.',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    // "History worth keeping" means actual frozen financial records — invoices.
-    // A room whose only contracts are drafts or terminated leases that never
-    // billed anything (e.g. leftover test data) has nothing to protect, so it
-    // is removed outright, clearing those empty contracts first for the FK.
-    // This is what lets an empty building finally be deleted. A room that did
-    // bill is kept for the record (SPEC 6.4) and only marked inactive.
-    const contractIds = room.contracts.map((c) => c.id);
-    const invoiceCount = contractIds.length
-      ? await this.prisma.rentalInvoice.count({
-          where: { contractId: { in: contractIds } },
-        })
-      : 0;
-
-    if (invoiceCount > 0) {
-      await this.prisma.room.update({
-        where: { id },
-        data: { isActive: false, status: 'vacant' },
-      });
-      return;
-    }
+    // Every contract that covers this room (as primary or additional).
+    const contractIds = [...new Set(room.contractRooms.map((cr) => cr.contractId))];
 
     if (contractIds.length) {
+      const contracts = await this.prisma.contract.findMany({
+        where: { id: { in: contractIds } },
+        select: { id: true, status: true },
+      });
+      if (contracts.some((c) => c.status === 'active')) {
+        throw new AppException(
+          ApiCode.ROOM_HAS_CONTRACTS,
+          'Cannot remove a room with an active contract.',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      // If any covering lease also covers other rooms, removing this one room
+      // would alter that shared contract — refuse and let the user edit the
+      // lease instead. (Keeps the multi-room case safe.)
+      for (const cId of contractIds) {
+        const roomsOnContract = await this.prisma.contractRoom.count({
+          where: { contractId: cId },
+        });
+        if (roomsOnContract > 1) {
+          throw new AppException(
+            ApiCode.ROOM_HAS_CONTRACTS,
+            'This room is part of a multi-room lease; remove it from that contract first.',
+            HttpStatus.CONFLICT,
+          );
+        }
+      }
+
+      // "History worth keeping" means actual frozen financial records — invoices.
+      // A room whose only leases never billed anything (e.g. leftover test data)
+      // has nothing to protect, so it is removed outright, clearing those empty
+      // single-room contracts first for the FK. A room that did bill is kept for
+      // the record (SPEC 6.4) and only marked inactive.
+      const invoiceCount = await this.prisma.rentalInvoice.count({
+        where: { contractId: { in: contractIds } },
+      });
+      if (invoiceCount > 0) {
+        await this.prisma.room.update({
+          where: { id },
+          data: { isActive: false, status: 'vacant' },
+        });
+        return;
+      }
+
+      // Each remaining contract is single-room + invoice-free → delete it (its
+      // ContractRoom rows cascade away, freeing the room's FK).
       await this.prisma.contract.deleteMany({ where: { id: { in: contractIds } } });
     }
+
     await this.prisma.room.delete({ where: { id } });
   }
 

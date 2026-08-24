@@ -1,4 +1,6 @@
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsInt,
   IsNotEmpty,
   IsNumberString,
@@ -13,7 +15,10 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export class CreateContractDto {
   @IsString() @IsNotEmpty() tenantId!: string;
-  @IsString() @IsNotEmpty() roomId!: string;
+  // One contract can cover several rooms. `roomIds` is preferred; `roomId` is
+  // still accepted for single-room callers (the service resolves either).
+  @IsOptional() @IsArray() @ArrayNotEmpty() @IsString({ each: true }) roomIds?: string[];
+  @IsOptional() @IsString() @IsNotEmpty() roomId?: string;
   @Matches(DATE) startDate!: string;
   @Matches(DATE) endDate!: string;
   @IsNumberString() basicRent!: string;

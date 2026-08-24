@@ -21,10 +21,17 @@ export interface ContractInvoiceRow {
   status: string;
 }
 
+export interface ContractRoomRef {
+  id: string;
+  roomNumber: string;
+  building: { id: string; name: string };
+}
+
 export interface ContractDetail {
   id: string;
   tenant: { id: string; businessName: string };
-  room: { id: string; roomNumber: string; building: { id: string; name: string } };
+  room: ContractRoomRef;
+  rooms: ContractRoomRef[];
   startDate: string;
   endDate: string;
   basicRent: string;
@@ -43,7 +50,7 @@ export interface ContractDetail {
 
 export interface CreateContractInput {
   tenantId: string;
-  roomId: string;
+  roomIds: string[];
   startDate: string;
   endDate: string;
   basicRent: string;

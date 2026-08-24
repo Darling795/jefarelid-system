@@ -12,6 +12,7 @@ import { listTenants } from "@/lib/api/tenants";
 import { listBuildings } from "@/lib/api/buildings";
 import { listRooms } from "@/lib/api/rooms";
 import { ApiError } from "@/lib/api/types";
+import { formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,9 +37,10 @@ export default function NewContractPage() {
   const router = useRouter();
   const [tenantId, setTenantId] = useState("");
   const [buildingId, setBuildingId] = useState("");
-  const [roomId, setRoomId] = useState("");
-  // Tracks the rate we auto-filled, so we only overwrite the rent field while it
-  // still holds an auto-filled value — never a rate the user typed themselves.
+  const [roomIds, setRoomIds] = useState<string[]>([]);
+  // Tracks the rate we auto-filled (sum of selected rooms), so we only overwrite
+  // the rent field while it still holds an auto-filled value — never one the
+  // user typed themselves.
   const [autoRent, setAutoRent] = useState("");
   const [form, setForm] = useState({
     startDate: "",
@@ -61,25 +63,31 @@ export default function NewContractPage() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  // Selecting a room prefills Basic rent from that room's base rate. We leave a
-  // rent the user has manually typed untouched (only replace an empty field or a
-  // previously auto-filled one).
-  const selectRoom = (id: string) => {
-    setRoomId(id);
-    const room = rooms.data?.find((r) => r.id === id);
-    if (!room) return;
+  // Toggling a room recomputes Basic rent as the sum of the selected rooms'
+  // base rates. We leave a rent the user has manually typed untouched (only
+  // replace an empty field or a previously auto-filled one).
+  const toggleRoom = (id: string) => {
+    const next = roomIds.includes(id)
+      ? roomIds.filter((r) => r !== id)
+      : [...roomIds, id];
+    setRoomIds(next);
+    const sum = next.reduce((acc, rid) => {
+      const room = rooms.data?.find((r) => r.id === rid);
+      return acc + (room ? Number(room.baseRate) : 0);
+    }, 0);
+    const sumStr = next.length ? sum.toFixed(2) : "";
     setForm((f) => {
       const untouched = f.basicRent === "" || f.basicRent === autoRent;
-      return untouched ? { ...f, basicRent: room.baseRate } : f;
+      return untouched ? { ...f, basicRent: sumStr } : f;
     });
-    setAutoRent(room.baseRate);
+    setAutoRent(sumStr);
   };
 
   const mutation = useMutation({
     mutationFn: () => {
       const input: CreateContractInput = {
         tenantId,
-        roomId,
+        roomIds,
         startDate: form.startDate,
         endDate: form.endDate,
         basicRent: form.basicRent,
@@ -99,7 +107,7 @@ export default function NewContractPage() {
     },
   });
 
-  const canSubmit = tenantId && roomId && form.startDate && form.endDate && form.basicRent;
+  const canSubmit = tenantId && roomIds.length > 0 && form.startDate && form.endDate && form.basicRent;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -140,54 +148,74 @@ export default function NewContractPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label>Building</Label>
-                <Select
-                  value={buildingId}
-                  onValueChange={(v) => {
-                    setBuildingId(v ?? "");
-                    setRoomId("");
-                    setAutoRent("");
-                  }}
-                  items={buildings.data?.map((b) => ({ value: b.id, label: b.name }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select building" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {buildings.data?.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Room</Label>
-                <Select
-                  value={roomId}
-                  onValueChange={(v) => selectRoom(v ?? "")}
-                  disabled={!buildingId}
-                  items={rooms.data
+            <div className="flex flex-col gap-2">
+              <Label>Building</Label>
+              <Select
+                value={buildingId}
+                onValueChange={(v) => {
+                  setBuildingId(v ?? "");
+                  setRoomIds([]);
+                  setAutoRent("");
+                }}
+                items={buildings.data?.map((b) => ({ value: b.id, label: b.name }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select building" />
+                </SelectTrigger>
+                <SelectContent>
+                  {buildings.data?.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>
+                Rooms{roomIds.length > 0 ? ` (${roomIds.length} selected)` : ""}
+              </Label>
+              {!buildingId ? (
+                <p className="text-sm text-muted-foreground">Select a building first.</p>
+              ) : (
+                <div className="grid max-h-56 grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border p-2">
+                  {rooms.data?.filter((r) => r.isActive).length === 0 && (
+                    <p className="col-span-2 py-2 text-center text-sm text-muted-foreground">
+                      No active rooms in this building.
+                    </p>
+                  )}
+                  {rooms.data
                     ?.filter((r) => r.isActive)
-                    .map((r) => ({ value: r.id, label: `${r.roomNumber} (${r.status})` }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select room" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rooms.data
-                      ?.filter((r) => r.isActive)
-                      .map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.roomNumber} ({r.status})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    .map((r) => {
+                      const checked = roomIds.includes(r.id);
+                      return (
+                        <label
+                          key={r.id}
+                          className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent ${
+                            checked ? "bg-accent/60" : ""
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-primary"
+                            checked={checked}
+                            onChange={() => toggleRoom(r.id)}
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            {r.roomNumber}{" "}
+                            <span className="text-muted-foreground">
+                              · {formatPHP(r.baseRate)}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Select one or more rooms. Basic rent below is the sum of their base rates.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -207,7 +235,7 @@ export default function NewContractPage() {
                 <Input id="rent" inputMode="decimal" required value={form.basicRent} onChange={set("basicRent")} />
                 {autoRent && form.basicRent === autoRent && (
                   <p className="text-xs text-muted-foreground">
-                    Filled from the room&rsquo;s base rate. You can override it.
+                    Sum of the selected rooms&rsquo; base rates. You can override it.
                   </p>
                 )}
               </div>
