@@ -15,6 +15,7 @@ import {
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/types";
 import { AUTH_QUERY_KEY, useAuth } from "@/lib/auth/use-auth";
+import { Logomark } from "@/components/logomark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,9 +67,7 @@ export default function LoginPage() {
 
   const Brand = (
     <div className="flex items-center gap-3">
-      <div className="grid size-11 place-items-center rounded-md bg-primary text-primary-foreground ring-1 ring-black/10">
-        <span className="font-heading text-lg font-semibold leading-none">JF</span>
-      </div>
+      <Logomark className="size-11" />
       <div className="leading-tight">
         <p className="font-heading text-lg font-semibold tracking-tight">JEFARELID</p>
         <p className="text-xs text-muted-foreground">Rental Management</p>
@@ -83,9 +82,7 @@ export default function LoginPage() {
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
         <div className="relative flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground ring-1 ring-white/10">
-            <span className="font-heading text-lg font-semibold leading-none">JF</span>
-          </div>
+          <Logomark tone="dark" className="size-11" />
           <div className="leading-tight">
             <p className="font-heading text-lg font-semibold tracking-tight">JEFARELID</p>
             <p className="text-xs uppercase tracking-wider text-sidebar-foreground/50">
@@ -95,25 +92,26 @@ export default function LoginPage() {
         </div>
 
         <div className="relative my-auto max-w-md">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/40">
+          <p className="mb-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/40">
             Building &amp; Room Rental
           </p>
-          <h2 className="font-heading text-[2.6rem] font-semibold leading-[1.1]">
+          <h2 className="font-heading text-[2.15rem] font-semibold leading-[1.15]">
             Buildings, tenants &amp; rent — in one considered system.
           </h2>
-          <p className="mt-5 leading-relaxed text-sidebar-foreground/65">
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-sidebar-foreground/60">
             Track leases, generate BIR-ready invoices, record payments, and see the
             whole portfolio at a glance.
           </p>
 
-          <ul className="mt-10 space-y-3.5">
+          <ul className="mt-9 border-t border-white/10">
             {FEATURES.map((f) => {
               const Icon = f.icon;
               return (
-                <li key={f.label} className="flex items-center gap-3">
-                  <div className="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-sidebar-foreground/70">
-                    <Icon className="size-4.5" />
-                  </div>
+                <li
+                  key={f.label}
+                  className="flex items-center gap-3.5 border-b border-white/10 py-3.5"
+                >
+                  <Icon className="size-4.5 shrink-0 text-sidebar-foreground/45" />
                   <span className="text-sm text-sidebar-foreground/85">{f.label}</span>
                 </li>
               );
@@ -128,21 +126,21 @@ export default function LoginPage() {
 
       {/* Right form panel */}
       <div className="relative flex items-center justify-center bg-background px-4 py-10">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-[380px]">
           {/* Mobile brand */}
           <div className="mb-8 flex justify-center lg:hidden">{Brand}</div>
 
           <Card>
-            <CardContent className="pt-6">
-              <div className="mb-6">
+            <CardContent className="p-7 sm:p-8">
+              <div className="mb-7">
                 <h1 className="font-heading text-2xl font-semibold">Welcome back</h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Sign in to your staff account.
                 </p>
               </div>
 
               <form
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-5"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!mutation.isPending) mutation.mutate();

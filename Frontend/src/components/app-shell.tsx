@@ -22,6 +22,7 @@ import {
 import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { AlertsBell } from "@/components/alerts-bell";
 import { GlobalSearch } from "@/components/global-search";
+import { Logomark } from "@/components/logomark";
 
 const ROLE_LABEL: Record<AuthUser["role"], string> = {
   super_admin: "Super Admin",
@@ -70,9 +71,7 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
   const Sidebar = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-        <div className="grid size-10 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground ring-1 ring-white/10">
-          <span className="font-heading text-lg font-semibold leading-none">JF</span>
-        </div>
+        <Logomark tone="dark" />
         <div className="leading-tight">
           <p className="font-heading text-lg font-semibold tracking-tight">JEFARELID</p>
           <p className="text-[11px] uppercase tracking-wider text-sidebar-foreground/50">

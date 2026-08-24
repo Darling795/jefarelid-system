@@ -128,9 +128,12 @@
   html {
     @apply font-sans;
   }
-  /* Editorial headings: serif display, tightened. Page and section titles use
-     the .font-heading utility (which maps to the serif) for an editorial feel;
-     data/labels stay in the sans body font. */
+  /* Editorial headings: serif display, tightened. Section headers (h1–h3) get
+     the serif automatically; the .font-heading utility applies it anywhere else.
+     Small uppercase labels and data stay in the sans body font. */
+  h1,
+  h2,
+  h3,
   .font-heading {
     font-family: var(--font-heading);
     letter-spacing: -0.01em;
