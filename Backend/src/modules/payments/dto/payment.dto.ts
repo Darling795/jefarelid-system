@@ -15,6 +15,14 @@ export class CreatePaymentDto {
   @IsOptional() @IsString() remarks?: string;
 }
 
+export class UpdatePaymentDto {
+  @IsOptional() @IsNumberString() amountPaid?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) paymentDate?: string;
+  @IsOptional() @IsString() orNumber?: string;
+  @IsOptional() @IsString() paymentMethod?: string;
+  @IsOptional() @IsString() remarks?: string;
+}
+
 export class DeletePaymentDto {
   @IsString() @IsNotEmpty() reason!: string;
 }

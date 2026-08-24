@@ -37,6 +37,9 @@ export default function NewContractPage() {
   const [tenantId, setTenantId] = useState("");
   const [buildingId, setBuildingId] = useState("");
   const [roomId, setRoomId] = useState("");
+  // Tracks the rate we auto-filled, so we only overwrite the rent field while it
+  // still holds an auto-filled value — never a rate the user typed themselves.
+  const [autoRent, setAutoRent] = useState("");
   const [form, setForm] = useState({
     startDate: "",
     endDate: "",
@@ -57,6 +60,20 @@ export default function NewContractPage() {
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // Selecting a room prefills Basic rent from that room's base rate. We leave a
+  // rent the user has manually typed untouched (only replace an empty field or a
+  // previously auto-filled one).
+  const selectRoom = (id: string) => {
+    setRoomId(id);
+    const room = rooms.data?.find((r) => r.id === id);
+    if (!room) return;
+    setForm((f) => {
+      const untouched = f.basicRent === "" || f.basicRent === autoRent;
+      return untouched ? { ...f, basicRent: room.baseRate } : f;
+    });
+    setAutoRent(room.baseRate);
+  };
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -131,6 +148,7 @@ export default function NewContractPage() {
                   onValueChange={(v) => {
                     setBuildingId(v ?? "");
                     setRoomId("");
+                    setAutoRent("");
                   }}
                   items={buildings.data?.map((b) => ({ value: b.id, label: b.name }))}
                 >
@@ -150,7 +168,7 @@ export default function NewContractPage() {
                 <Label>Room</Label>
                 <Select
                   value={roomId}
-                  onValueChange={(v) => setRoomId(v ?? "")}
+                  onValueChange={(v) => selectRoom(v ?? "")}
                   disabled={!buildingId}
                   items={rooms.data
                     ?.filter((r) => r.isActive)
@@ -187,6 +205,11 @@ export default function NewContractPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="rent">Basic rent (PHP)</Label>
                 <Input id="rent" inputMode="decimal" required value={form.basicRent} onChange={set("basicRent")} />
+                {autoRent && form.basicRent === autoRent && (
+                  <p className="text-xs text-muted-foreground">
+                    Filled from the room&rsquo;s base rate. You can override it.
+                  </p>
+                )}
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="esc">Escalation rate (e.g. 0.05)</Label>

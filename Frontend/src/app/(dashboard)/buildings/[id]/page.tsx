@@ -10,7 +10,7 @@ import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteBuilding, getBuilding } from "@/lib/api/buildings";
 import { deleteRoom, type RoomListItem } from "@/lib/api/rooms";
 import { ApiError } from "@/lib/api/types";
-import { formatPHP } from "@/lib/format";
+import { formatArea, formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { BuildingFormDialog } from "@/components/buildings/building-form-dialog";
@@ -161,7 +161,7 @@ export default function BuildingDetailPage() {
                     <TableCell className="font-medium">{r.roomNumber}</TableCell>
                     <TableCell>{r.floor ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {r.areaSqm ? `${r.areaSqm} m²` : "—"}
+                      {formatArea(r.areaSqm)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatPHP(r.baseRate)}

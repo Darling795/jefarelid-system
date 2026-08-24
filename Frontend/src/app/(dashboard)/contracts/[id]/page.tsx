@@ -58,7 +58,7 @@ export default function ContractDetailPage() {
   const [renewOpen, setRenewOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
-  const [renewForm, setRenewForm] = useState({ startDate: "", endDate: "", basicRent: "" });
+  const [renewForm, setRenewForm] = useState({ startDate: "", endDate: "", basicRent: "", escalationRate: "" });
   const [termForm, setTermForm] = useState({ effectiveDate: "", reason: "" });
   const [period, setPeriod] = useState("");
 
@@ -85,6 +85,7 @@ export default function ContractDetailPage() {
         startDate: renewForm.startDate,
         endDate: renewForm.endDate,
         basicRent: renewForm.basicRent || undefined,
+        escalationRate: renewForm.escalationRate || undefined,
       }),
     onSuccess: async (c) => {
       toast.success("Contract renewed.");
@@ -258,9 +259,15 @@ export default function ContractDetailPage() {
                       <Input type="date" required value={renewForm.endDate} onChange={(e) => setRenewForm((f) => ({ ...f, endDate: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <Label>New basic rent (blank = carry escalated rent)</Label>
-                    <Input inputMode="decimal" placeholder="auto" value={renewForm.basicRent} onChange={(e) => setRenewForm((f) => ({ ...f, basicRent: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label>New basic rent (blank = carry escalated rent)</Label>
+                      <Input inputMode="decimal" placeholder="auto" value={renewForm.basicRent} onChange={(e) => setRenewForm((f) => ({ ...f, basicRent: e.target.value }))} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label>Escalation rate (blank = keep current)</Label>
+                      <Input inputMode="decimal" placeholder="e.g. 0.05" value={renewForm.escalationRate} onChange={(e) => setRenewForm((f) => ({ ...f, escalationRate: e.target.value }))} />
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>

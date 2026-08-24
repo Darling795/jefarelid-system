@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Ban, LoaderCircle, Plus } from "lucide-react";
+import { ArrowLeft, Ban, LoaderCircle, Plus, Printer } from "lucide-react";
 
 import { getInvoice, voidInvoice } from "@/lib/api/invoices";
 import { createPayment } from "@/lib/api/payments";
@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api/types";
 import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
+import { PrintableInvoice } from "@/components/invoices/printable-invoice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -94,7 +95,8 @@ export default function InvoiceDetailPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <>
+    <div className="mx-auto max-w-4xl print:hidden">
       <Link href="/invoices" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Invoices
       </Link>
@@ -108,6 +110,7 @@ export default function InvoiceDetailPage() {
             description={`${data.tenant.businessName} · ${data.buildingName} ${data.roomNumber}`}
             action={
               <div className="flex gap-2">
+                <Button variant="outline" onClick={() => window.print()}><Printer /> Print</Button>
                 {data.status !== "voided" && data.status !== "paid" && (
                   <Button onClick={() => setPayOpen(true)}><Plus /> Record payment</Button>
                 )}
@@ -231,5 +234,7 @@ export default function InvoiceDetailPage() {
         </>
       )}
     </div>
+    {data && <PrintableInvoice invoice={data} />}
+    </>
   );
 }

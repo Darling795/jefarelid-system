@@ -145,7 +145,7 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
   return (
     <div className="flex min-h-dvh bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 md:block">{Sidebar}</aside>
+      <aside className="hidden w-64 shrink-0 md:block print:!hidden">{Sidebar}</aside>
 
       {/* Mobile sidebar */}
       {mobileOpen && (
@@ -167,7 +167,7 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="p-4 sm:p-6">
           {/* Header */}
-          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-border bg-gradient-to-r from-primary/[0.07] via-card to-card px-5 py-4 shadow-sm sm:px-6">
+          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-border bg-gradient-to-r from-primary/[0.07] via-card to-card px-5 py-4 shadow-sm sm:px-6 print:!hidden">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"

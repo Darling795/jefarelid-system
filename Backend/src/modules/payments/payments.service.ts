@@ -169,6 +169,78 @@ export class PaymentsService {
     };
   }
 
+  async update(
+    id: string,
+    dto: {
+      amountPaid?: string;
+      paymentDate?: string;
+      orNumber?: string;
+      paymentMethod?: string;
+      remarks?: string;
+    },
+  ) {
+    const payment = await this.prisma.rentalPayment.findUnique({
+      where: { id },
+      include: { invoice: { include: { payments: true } } },
+    });
+    if (!payment) {
+      throw new AppException(
+        ApiCode.NOT_FOUND,
+        'Payment not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // If the amount changes, it must still fit within the invoice balance left
+    // by every OTHER payment on that invoice.
+    if (dto.amountPaid !== undefined) {
+      const paidByOthers = payment.invoice.payments
+        .filter((p) => p.id !== id)
+        .reduce((acc, p) => acc.add(p.amountPaid), new Prisma.Decimal(0));
+      const remaining = payment.invoice.netReceivable.sub(paidByOthers);
+      const amount = new Prisma.Decimal(dto.amountPaid);
+      if (amount.greaterThan(remaining)) {
+        throw new AppException(
+          ApiCode.OVERPAYMENT,
+          'Payment exceeds the outstanding balance.',
+          HttpStatus.CONFLICT,
+          { balance: remaining.toFixed(2) },
+        );
+      }
+    }
+
+    // OR number stays unique across all payments (ignoring this one).
+    if (dto.orNumber) {
+      const dup = await this.prisma.rentalPayment.findFirst({
+        where: { orNumber: dto.orNumber, id: { not: id } },
+        select: { id: true },
+      });
+      if (dup) {
+        throw new AppException(
+          ApiCode.DUPLICATE_OR_NUMBER,
+          'That OR number has already been recorded.',
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
+    await this.prisma.rentalPayment.update({
+      where: { id },
+      data: {
+        amountPaid: dto.amountPaid,
+        paymentDate: dto.paymentDate
+          ? new Date(`${dto.paymentDate}T00:00:00.000Z`)
+          : undefined,
+        orNumber: dto.orNumber,
+        paymentMethod: dto.paymentMethod,
+        remarks: dto.remarks,
+      },
+    });
+
+    await this.refreshInvoiceStatus(payment.invoiceId);
+    return this.findOne(id);
+  }
+
   async remove(id: string, _reason: string): Promise<void> {
     const p = await this.prisma.rentalPayment.findUnique({ where: { id } });
     if (!p) {

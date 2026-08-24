@@ -209,6 +209,7 @@ Omitting `contractId` on generate runs for all active contracts. Duplicate perio
 GET    /payments                   → list; filters: tenantId, buildingId, periodMonth (YYYY-MM), orNumber (partial), dateFrom, dateTo
 POST   /payments                   { invoiceId, amountPaid, paymentDate, orNumber, paymentMethod, remarks }
 GET    /payments/:id
+PATCH  /payments/:id               { amountPaid?, paymentDate?, orNumber?, paymentMethod?, remarks? } → edit a recorded payment; re-checks OVERPAYMENT + DUPLICATE_OR_NUMBER and refreshes invoice status
 DELETE /payments/:id               { reason }  → Super Admin only
 GET    /payments/outstanding       → filters: tenantId, buildingId; aged buckets
 ```

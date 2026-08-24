@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -13,7 +14,11 @@ import { User } from '@prisma/client';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { Roles } from '../../common/auth/roles.decorator';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto, DeletePaymentDto } from './dto/payment.dto';
+import {
+  CreatePaymentDto,
+  DeletePaymentDto,
+  UpdatePaymentDto,
+} from './dto/payment.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -50,6 +55,11 @@ export class PaymentsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.payments.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdatePaymentDto) {
+    return this.payments.update(id, dto);
   }
 
   @Roles('super_admin')

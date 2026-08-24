@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, X } from "lucide-react";
+import { CreditCard, Pencil, X } from "lucide-react";
 
-import { getOutstanding, listPayments } from "@/lib/api/payments";
+import { getOutstanding, listPayments, type PaymentListItem } from "@/lib/api/payments";
 import { listTenants } from "@/lib/api/tenants";
 import { listBuildings } from "@/lib/api/buildings";
 import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
+import { EditPaymentDialog } from "@/components/payments/edit-payment-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,8 @@ export default function PaymentsPage() {
     dateFrom: filters.dateFrom || undefined,
     dateTo: filters.dateTo || undefined,
   };
+
+  const [editing, setEditing] = useState<PaymentListItem | null>(null);
 
   const outstanding = useQuery({ queryKey: ["outstanding"], queryFn: () => getOutstanding({}) });
   const payments = useQuery({
@@ -173,16 +176,17 @@ export default function PaymentsPage() {
               <TableHead>OR #</TableHead>
               <TableHead>Method</TableHead>
               <TableHead className="text-right">Amount</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {payments.isLoading &&
               Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))}
             {payments.data?.data.length === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="p-0">
+                <TableCell colSpan={7} className="p-0">
                   <EmptyState
                     icon={CreditCard}
                     title={hasFilters ? "No payments match these filters" : "No payments yet"}
@@ -203,11 +207,18 @@ export default function PaymentsPage() {
                 <TableCell className="tabular-nums">{p.orNumber ?? "—"}</TableCell>
                 <TableCell>{p.paymentMethod ?? "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatPHP(p.amountPaid)}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon-sm" onClick={() => setEditing(p)} aria-label="Edit payment">
+                    <Pencil className="size-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+
+      <EditPaymentDialog payment={editing} onOpenChange={(o) => !o && setEditing(null)} />
     </div>
   );
 }

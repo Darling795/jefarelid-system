@@ -32,6 +32,18 @@ export function formatDate(iso: string | null | undefined): string {
   return `${dd} ${MONTHS[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
 }
 
+/**
+ * Floor area with the square-metre unit, thousands-separated and 2 dp
+ * (e.g. `1,250.00 sq.m.`). Returns "—" when unknown.
+ * TODO: confirm with client — exact area display wording requested by the panel.
+ */
+export function formatArea(sqm: string | number | null | undefined): string {
+  if (sqm === null || sqm === undefined || sqm === "") return "—";
+  const n = typeof sqm === "string" ? Number(sqm) : sqm;
+  if (Number.isNaN(n)) return "—";
+  return `${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} sq.m.`;
+}
+
 /** Month identifier `YYYY-MM` → `MMM YYYY` (e.g. Mar 2026). */
 export function formatPeriod(period: string | null | undefined): string {
   if (!period) return "—";

@@ -47,6 +47,19 @@ export async function createPayment(input: CreatePaymentInput) {
   return res.data.data;
 }
 
+export interface UpdatePaymentInput {
+  amountPaid?: string;
+  paymentDate?: string;
+  orNumber?: string;
+  paymentMethod?: string;
+  remarks?: string;
+}
+
+export async function updatePayment(id: string, input: UpdatePaymentInput) {
+  const res = await apiClient.patch(`/payments/${id}`, input);
+  return res.data.data;
+}
+
 export async function getOutstanding(params: {
   tenantId?: string;
   buildingId?: string;
