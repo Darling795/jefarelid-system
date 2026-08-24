@@ -94,7 +94,8 @@ export function RoomFormDialog({
           <DialogHeader>
             <DialogTitle>{room ? "Edit room" : "Add room"}</DialogTitle>
             <DialogDescription>
-              Base rate is the monthly rent before VAT, escalation, and WHT.
+              Base rate is the monthly rent before VAT, escalation, and WHT. It is the
+              room&rsquo;s predefined rate and auto-fills the rent when a contract is created.
             </DialogDescription>
           </DialogHeader>
 

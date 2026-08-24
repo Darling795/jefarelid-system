@@ -8,6 +8,19 @@ import { ReportTable, toPdf, toXlsx } from './export.util';
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
+  @Get('tenant-records')
+  async tenantRecords(@Query() q: { status?: string; format?: string }, @Res() res: Response) {
+    return this.output(await this.reports.tenantRecords(q.status), q.format, res, 'tenant-records');
+  }
+
+  @Get('rental-register')
+  async rentalRegister(
+    @Query() q: { status?: string; buildingId?: string; format?: string },
+    @Res() res: Response,
+  ) {
+    return this.output(await this.reports.rentalRegister(q.status, q.buildingId), q.format, res, 'rental-register');
+  }
+
   @Get('billing-statement')
   async billing(@Query() q: { tenantId?: string; periodMonth?: string; format?: string }, @Res() res: Response) {
     return this.output(await this.reports.billingStatement(q.tenantId, q.periodMonth), q.format, res, 'billing-statement');

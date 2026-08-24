@@ -12,6 +12,84 @@ const M = (d: Prisma.Decimal) => d.toFixed(2);
 export class ReportsService {
   constructor(@Inject(PRISMA) private readonly prisma: ExtendedPrismaClient) {}
 
+  /** Master list of tenants with contact details, TIN, status, and lease counts. */
+  async tenantRecords(status?: string): Promise<ReportTable> {
+    const tenants = await this.prisma.tenant.findMany({
+      where: status === 'active' || status === 'inactive' ? { status } : {},
+      orderBy: { businessName: 'asc' },
+      include: {
+        _count: { select: { contracts: { where: { status: 'active' } } } },
+      },
+    });
+    return {
+      title: 'Tenant Records',
+      subtitle:
+        status === 'active'
+          ? 'Active tenants'
+          : status === 'inactive'
+            ? 'Inactive tenants'
+            : 'All tenants',
+      columns: [
+        { key: 'name', label: 'Business name' },
+        { key: 'contact', label: 'Contact person' },
+        { key: 'number', label: 'Contact number' },
+        { key: 'email', label: 'Email' },
+        { key: 'tin', label: 'TIN' },
+        { key: 'status', label: 'Status' },
+        { key: 'active', label: 'Active leases', align: 'right' },
+      ],
+      rows: tenants.map((t) => ({
+        name: t.businessName,
+        contact: t.contactPerson ?? '',
+        number: t.contactNumber ?? '',
+        email: t.email ?? '',
+        tin: t.tin ?? '',
+        status: t.status,
+        active: t._count.contracts,
+      })),
+    };
+  }
+
+  /** Lease register: every contract with its tenant, rooms, term, rent and status. */
+  async rentalRegister(status?: string, buildingId?: string): Promise<ReportTable> {
+    const contracts = await this.prisma.contract.findMany({
+      where: {
+        ...(status ? { status: status as Prisma.EnumContractStatusFilter['equals'] } : {}),
+        ...(buildingId ? { room: { buildingId } } : {}),
+      },
+      orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
+      include: {
+        tenant: { select: { businessName: true } },
+        room: { select: { building: { select: { name: true } } } },
+        rooms: { include: { room: { select: { roomNumber: true } } } },
+      },
+    });
+    return {
+      title: 'Rental Register',
+      subtitle: [status ? `Status: ${status}` : 'All leases']
+        .filter(Boolean)
+        .join(' · '),
+      columns: [
+        { key: 'tenant', label: 'Tenant' },
+        { key: 'building', label: 'Building' },
+        { key: 'rooms', label: 'Room(s)' },
+        { key: 'start', label: 'Start' },
+        { key: 'end', label: 'End' },
+        { key: 'rent', label: 'Basic rent', align: 'right' },
+        { key: 'status', label: 'Status' },
+      ],
+      rows: contracts.map((c) => ({
+        tenant: c.tenant.businessName,
+        building: c.room.building.name,
+        rooms: (c.rooms.length ? c.rooms.map((cr) => cr.room.roomNumber) : []).join(', '),
+        start: day(c.startDate),
+        end: day(c.endDate),
+        rent: M(c.basicRent),
+        status: c.status,
+      })),
+    };
+  }
+
   async billingStatement(tenantId?: string, periodMonth?: string): Promise<ReportTable> {
     const invoices = await this.prisma.rentalInvoice.findMany({
       where: {

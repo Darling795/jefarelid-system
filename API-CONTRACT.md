@@ -289,6 +289,8 @@ GET    /reports/occupancy          ?asOf=
 GET    /reports/utility-expense    ?dateFrom=&dateTo=&buildingId=
 GET    /reports/contract-expiry    ?days=
 GET    /reports/tax-summary        ?periodFrom=&periodTo=
+GET    /reports/tenant-records     ?status=            → tenant master list (contact, TIN, status, active leases)
+GET    /reports/rental-register    ?status=&buildingId= → lease register (tenant, building, room(s), term, rent, status)
 ```
 
 Each accepts `?format=json|pdf|xlsx`. Default `json`. `pdf` and `xlsx` return a file stream with the appropriate `Content-Disposition`.

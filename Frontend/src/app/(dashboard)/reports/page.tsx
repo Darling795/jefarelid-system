@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Download, FileSpreadsheet } from "lucide-react";
 
 import { downloadReport, fetchReport } from "@/lib/api/reports";
+import { listTenants } from "@/lib/api/tenants";
+import { listBuildings } from "@/lib/api/buildings";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,14 +29,48 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const REPORTS = [
-  { key: "collection", label: "Collection report", filters: ["dateFrom", "dateTo"] },
-  { key: "payment-history", label: "Payment history", filters: ["dateFrom", "dateTo"] },
-  { key: "billing-statement", label: "Billing statement", filters: ["periodMonth"] },
+type FilterKind = "date" | "period" | "number" | "text" | "tenant" | "building" | "select";
+interface FilterDef {
+  key: string;
+  label: string;
+  kind: FilterKind;
+  options?: { value: string; label: string }[];
+}
+
+const D = (key: string, label: string): FilterDef => ({ key, label, kind: "date" });
+const P = (key: string, label: string): FilterDef => ({ key, label, kind: "period" });
+const TENANT: FilterDef = { key: "tenantId", label: "Tenant", kind: "tenant" };
+const BUILDING: FilterDef = { key: "buildingId", label: "Building", kind: "building" };
+const TENANT_STATUS: FilterDef = {
+  key: "status",
+  label: "Status",
+  kind: "select",
+  options: [
+    { value: "all", label: "All" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
+  ],
+};
+const CONTRACT_STATUS: FilterDef = {
+  key: "status",
+  label: "Status",
+  kind: "select",
+  options: ["all", "draft", "active", "renewed", "terminated", "expired"].map((s) => ({
+    value: s,
+    label: s === "all" ? "All" : s[0].toUpperCase() + s.slice(1),
+  })),
+};
+
+const REPORTS: { key: string; label: string; filters: FilterDef[] }[] = [
+  { key: "collection", label: "Collection report", filters: [D("dateFrom", "From"), D("dateTo", "To"), BUILDING] },
+  { key: "payment-history", label: "Payment history", filters: [D("dateFrom", "From"), D("dateTo", "To"), TENANT] },
+  { key: "billing-statement", label: "Billing statement", filters: [P("periodMonth", "Period"), TENANT] },
   { key: "occupancy", label: "Occupancy report", filters: [] },
-  { key: "utility-expense", label: "Utility expense", filters: ["dateFrom", "dateTo"] },
-  { key: "contract-expiry", label: "Contract expiry", filters: ["days"] },
-  { key: "tax-summary", label: "VAT & WHT summary", filters: ["periodFrom", "periodTo"] },
+  { key: "utility-expense", label: "Utility expense", filters: [D("dateFrom", "From"), D("dateTo", "To"), BUILDING] },
+  { key: "contract-expiry", label: "Contract expiry", filters: [{ key: "days", label: "Days ahead", kind: "number" }] },
+  { key: "tax-summary", label: "VAT & WHT summary", filters: [P("periodFrom", "Period from"), P("periodTo", "Period to")] },
+  { key: "tenant-records", label: "Tenant records", filters: [TENANT_STATUS] },
+  { key: "rental-register", label: "Rental register", filters: [CONTRACT_STATUS, BUILDING] },
 ];
 
 export default function ReportsPage() {
@@ -43,13 +79,23 @@ export default function ReportsPage() {
   const [active, setActive] = useState<{ type: string; params: Record<string, string> } | null>(null);
 
   const def = REPORTS.find((r) => r.key === type)!;
+  const tenants = useQuery({ queryKey: ["tenants", ""], queryFn: () => listTenants() });
+  const buildings = useQuery({ queryKey: ["buildings"], queryFn: listBuildings });
   const report = useQuery({
     queryKey: ["report", active],
     queryFn: () => fetchReport(active!.type, active!.params),
     enabled: !!active,
   });
 
-  const run = () => setActive({ type, params: { ...filters } });
+  // Drop empty/"all" values so they aren't sent as filters.
+  const cleanParams = () => {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(filters)) {
+      if (v && v !== "all") out[k] = v;
+    }
+    return out;
+  };
+  const run = () => setActive({ type, params: cleanParams() });
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -71,24 +117,54 @@ export default function ReportsPage() {
             </Select>
           </div>
 
-          {def.filters.map((f) => (
-            <div key={f} className="flex flex-col gap-2">
-              <Label className="capitalize">{f.replace(/([A-Z])/g, " $1")}</Label>
-              <Input
-                type={f.includes("date") || f.includes("From") || f.includes("To") ? (f === "periodFrom" || f === "periodTo" ? "text" : "date") : f === "days" ? "number" : "text"}
-                placeholder={f === "periodMonth" || f === "periodFrom" || f === "periodTo" ? "YYYY-MM" : ""}
-                value={filters[f] ?? ""}
-                onChange={(e) => setFilters((s) => ({ ...s, [f]: e.target.value }))}
-              />
-            </div>
-          ))}
+          {def.filters.map((f) => {
+            const items =
+              f.kind === "tenant"
+                ? [
+                    { value: "all", label: "All tenants" },
+                    ...(tenants.data?.data.map((t) => ({ value: t.id, label: t.businessName })) ?? []),
+                  ]
+                : f.kind === "building"
+                  ? [
+                      { value: "all", label: "All buildings" },
+                      ...(buildings.data?.map((b) => ({ value: b.id, label: b.name })) ?? []),
+                    ]
+                  : f.options ?? [];
+            const isSelect = f.kind === "tenant" || f.kind === "building" || f.kind === "select";
+            return (
+              <div key={f.key} className="flex min-w-40 flex-col gap-2">
+                <Label>{f.label}</Label>
+                {isSelect ? (
+                  <Select
+                    value={filters[f.key] ?? "all"}
+                    onValueChange={(v) => setFilters((s) => ({ ...s, [f.key]: v ?? "all" }))}
+                    items={items}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {items.map((it) => (
+                        <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    type={f.kind === "date" ? "date" : f.kind === "number" ? "number" : "text"}
+                    placeholder={f.kind === "period" ? "YYYY-MM" : ""}
+                    value={filters[f.key] ?? ""}
+                    onChange={(e) => setFilters((s) => ({ ...s, [f.key]: e.target.value }))}
+                  />
+                )}
+              </div>
+            );
+          })}
 
           <div className="flex gap-2">
             <Button onClick={run}>View</Button>
-            <Button variant="outline" onClick={() => downloadReport(type, filters, "xlsx")}>
+            <Button variant="outline" onClick={() => downloadReport(type, cleanParams(), "xlsx")}>
               <FileSpreadsheet /> Excel
             </Button>
-            <Button variant="outline" onClick={() => downloadReport(type, filters, "pdf")}>
+            <Button variant="outline" onClick={() => downloadReport(type, cleanParams(), "pdf")}>
               <Download /> PDF
             </Button>
           </div>
