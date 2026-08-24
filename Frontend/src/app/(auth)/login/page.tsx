@@ -10,6 +10,7 @@ import {
   Receipt,
   ShieldCheck,
 } from "lucide-react";
+// Building2 is used in the FEATURES list below.
 
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/types";
@@ -65,11 +66,11 @@ export default function LoginPage() {
 
   const Brand = (
     <div className="flex items-center gap-3">
-      <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] text-white shadow-lg shadow-violet-600/30 ring-1 ring-white/20">
-        <Building2 className="size-6" />
+      <div className="grid size-11 place-items-center rounded-md bg-primary text-primary-foreground ring-1 ring-black/10">
+        <span className="font-heading text-lg font-semibold leading-none">JF</span>
       </div>
       <div className="leading-tight">
-        <p className="text-lg font-extrabold tracking-tight">JEFARELID</p>
+        <p className="font-heading text-lg font-semibold tracking-tight">JEFARELID</p>
         <p className="text-xs text-muted-foreground">Rental Management</p>
       </div>
     </div>
@@ -78,55 +79,55 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-dvh lg:grid-cols-2">
       {/* Left brand panel */}
-      <div className="relative hidden flex-col overflow-hidden bg-gradient-to-br from-[#3b0f6f] via-[#5b21b6] to-[#7c3aed] p-12 text-white lg:flex">
-        <div className="pointer-events-none absolute -left-24 -top-24 size-80 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 -right-10 size-96 rounded-full bg-fuchsia-400/20 blur-3xl" />
+      <div className="relative hidden flex-col overflow-hidden bg-sidebar p-12 text-sidebar-foreground lg:flex">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
         <div className="relative flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25">
-            <Building2 className="size-6" />
+          <div className="grid size-11 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground ring-1 ring-white/10">
+            <span className="font-heading text-lg font-semibold leading-none">JF</span>
           </div>
           <div className="leading-tight">
-            <p className="text-lg font-extrabold tracking-tight">JEFARELID</p>
-            <p className="text-xs text-white/70">Rental Management</p>
+            <p className="font-heading text-lg font-semibold tracking-tight">JEFARELID</p>
+            <p className="text-xs uppercase tracking-wider text-sidebar-foreground/50">
+              Rental Management
+            </p>
           </div>
         </div>
 
         <div className="relative my-auto max-w-md">
-          <h2 className="text-4xl font-bold leading-tight tracking-tight">
-            Buildings, tenants &amp; rent — all in one place.
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/40">
+            Building &amp; Room Rental
+          </p>
+          <h2 className="font-heading text-[2.6rem] font-semibold leading-[1.1]">
+            Buildings, tenants &amp; rent — in one considered system.
           </h2>
-          <p className="mt-4 text-white/80">
-            Track leases, generate invoices, record payments, and see the whole
-            portfolio at a glance.
+          <p className="mt-5 leading-relaxed text-sidebar-foreground/65">
+            Track leases, generate BIR-ready invoices, record payments, and see the
+            whole portfolio at a glance.
           </p>
 
-          <ul className="mt-10 space-y-4">
+          <ul className="mt-10 space-y-3.5">
             {FEATURES.map((f) => {
               const Icon = f.icon;
               return (
                 <li key={f.label} className="flex items-center gap-3">
-                  <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20">
+                  <div className="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-sidebar-foreground/70">
                     <Icon className="size-4.5" />
                   </div>
-                  <span className="text-sm text-white/90">{f.label}</span>
+                  <span className="text-sm text-sidebar-foreground/85">{f.label}</span>
                 </li>
               );
             })}
           </ul>
         </div>
 
-        <p className="relative text-xs text-white/60">
+        <p className="relative text-xs text-sidebar-foreground/45">
           © JEFARELID Corp. · Internal staff system
         </p>
       </div>
 
       {/* Right form panel */}
-      <div className="relative flex items-center justify-center overflow-hidden bg-background px-4 py-10">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_50%_0%,var(--color-primary)_0%,transparent_60%)] opacity-[0.06]"
-        />
+      <div className="relative flex items-center justify-center bg-background px-4 py-10">
         <div className="w-full max-w-sm">
           {/* Mobile brand */}
           <div className="mb-8 flex justify-center lg:hidden">{Brand}</div>
@@ -134,7 +135,7 @@ export default function LoginPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
+                <h1 className="font-heading text-2xl font-semibold">Welcome back</h1>
                 <p className="text-sm text-muted-foreground">
                   Sign in to your staff account.
                 </p>
@@ -179,7 +180,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="mt-1 h-11 w-full text-sm shadow-lg shadow-primary/25"
+                  className="mt-1 h-11 w-full text-sm"
                   disabled={mutation.isPending}
                 >
                   {mutation.isPending ? (

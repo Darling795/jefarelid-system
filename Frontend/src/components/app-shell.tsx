@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, ChevronDown, KeyRound, LogOut, Menu, Sparkles, X } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut, Menu, X } from "lucide-react";
 
 import { logout } from "@/lib/api/auth";
 import { AUTH_QUERY_KEY } from "@/lib/auth/use-auth";
@@ -68,21 +68,23 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   const Sidebar = (
-    <div className="flex h-full flex-col border-r border-border bg-card">
-      <div className="flex items-center gap-3 px-5 py-6">
-        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#7c3aed] to-[#a78bfa] text-white shadow-lg shadow-violet-600/30 ring-1 ring-white/20">
-          <Building2 className="size-5.5" />
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+      <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
+        <div className="grid size-10 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground ring-1 ring-white/10">
+          <span className="font-heading text-lg font-semibold leading-none">JF</span>
         </div>
         <div className="leading-tight">
-          <p className="text-lg font-extrabold tracking-tight">JEFARELID</p>
-          <p className="text-xs font-medium text-muted-foreground">Rental Management</p>
+          <p className="font-heading text-lg font-semibold tracking-tight">JEFARELID</p>
+          <p className="text-[11px] uppercase tracking-wider text-sidebar-foreground/50">
+            Rental Management
+          </p>
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col overflow-y-auto px-3 pb-2">
+      <nav className="flex flex-1 flex-col overflow-y-auto px-3 py-3">
         {groups.map((group) => (
-          <div key={group.label} className="mb-1">
-            <p className="px-3.5 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+          <div key={group.label} className="mb-2">
+            <p className="px-3 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/40">
               {group.label}
             </p>
             <div className="flex flex-col gap-0.5">
@@ -95,18 +97,16 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      "group/nav relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all",
+                      "group/nav relative flex items-center gap-3 rounded-md py-2 pl-3.5 pr-3 text-sm transition-colors",
                       active
-                        ? "bg-gradient-to-r from-[#7c3aed] to-[#8b5cf6] font-semibold text-white shadow-lg shadow-violet-600/30"
-                        : "font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary",
+                        ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
+                        : "font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                     )}
                   >
-                    <Icon
-                      className={cn(
-                        "size-4.5 shrink-0 transition-transform",
-                        !active && "group-hover/nav:scale-110",
-                      )}
-                    />
+                    {active && (
+                      <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-sidebar-primary" />
+                    )}
+                    <Icon className="size-4.5 shrink-0" />
                     {item.label}
                   </Link>
                 );
@@ -116,28 +116,13 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
         ))}
       </nav>
 
-      {/* Accent card */}
-      <div className="px-3 pb-2">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#7c3aed] to-[#5b21b6] p-4 text-white shadow-lg shadow-violet-600/25">
-          <div className="pointer-events-none absolute -right-6 -top-6 size-20 rounded-full bg-white/10" />
-          <div className="mb-2 grid size-8 place-items-center rounded-lg bg-white/15 ring-1 ring-white/20">
-            <Sparkles className="size-4" />
-          </div>
-          <p className="text-sm font-semibold">All systems go</p>
-          <p className="mt-0.5 text-xs text-white/75">
-            Records, billing &amp; reports in one place.
-          </p>
-        </div>
-      </div>
-
-      <div className="px-3 pb-3">
-        <Button
-          variant="outline"
-          className="w-full justify-center"
+      <div className="border-t border-sidebar-border p-3">
+        <button
           onClick={() => logoutMutation.mutate()}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-sidebar-border py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <LogOut className="size-4" /> Sign out
-        </Button>
+        </button>
       </div>
     </div>
   );
@@ -167,7 +152,7 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="p-4 sm:p-6">
           {/* Header */}
-          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-border bg-gradient-to-r from-primary/[0.07] via-card to-card px-5 py-4 shadow-sm sm:px-6 print:!hidden">
+          <div className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-5 print:!hidden">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -178,11 +163,11 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
                 <Menu className="size-4" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                <h1 className="font-heading text-xl font-semibold sm:text-2xl">
                   {now ? greeting(now.getHours()) : "Welcome"},{" "}
                   <span className="text-primary">{firstName}</span>
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
                   {ROLE_LABEL[user.role]} · JEFARELID System
                 </p>
               </div>

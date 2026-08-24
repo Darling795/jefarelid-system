@@ -38,31 +38,23 @@ function Kpi({
   label,
   value,
   sub,
-  tint = "bg-primary/10 text-primary",
-  glow = "bg-primary/20",
+  tint = "bg-accent text-primary",
 }: {
   icon: typeof Building2;
   label: string;
   value: string;
   sub?: string;
   tint?: string;
-  glow?: string;
 }) {
   return (
-    <Card className="relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <div
-        className={cn(
-          "pointer-events-none absolute -right-6 -top-8 size-24 rounded-full opacity-60 blur-2xl",
-          glow,
-        )}
-      />
-      <CardContent className="relative flex items-center gap-4">
-        <div className={cn("grid size-12 place-items-center rounded-2xl ring-1 ring-black/5", tint)}>
-          <Icon className="size-5.5" />
+    <Card className="transition-colors hover:border-primary/30">
+      <CardContent className="flex items-center gap-4">
+        <div className={cn("grid size-11 shrink-0 place-items-center rounded-md border border-border", tint)}>
+          <Icon className="size-5" />
         </div>
         <div>
-          <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold tracking-tight tabular-nums">{value}</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="font-heading text-2xl font-semibold tabular-nums">{value}</p>
           {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
         </div>
       </CardContent>
@@ -143,29 +135,25 @@ export default function DashboardPage() {
               label="Occupancy"
               value={`${summary.data.occupancyRate}%`}
               sub={`${summary.data.occupiedRooms} / ${summary.data.rooms} rooms`}
-              tint="bg-primary/10 text-primary"
-              glow="bg-violet-500/25"
+              tint="bg-accent text-primary"
             />
             <Kpi
               icon={FileText}
               label="Active contracts"
               value={String(summary.data.activeContracts)}
               tint="bg-sky-500/10 text-sky-600 dark:text-sky-400"
-              glow="bg-sky-500/25"
             />
             <Kpi
               icon={Wallet}
               label="Outstanding"
               value={formatPHP(summary.data.outstandingTotal)}
               tint="bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              glow="bg-amber-500/25"
             />
             <Kpi
               icon={TrendingUp}
               label="Active tenants"
               value={String(summary.data.activeTenants)}
-              tint="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              glow="bg-emerald-500/25"
+              tint="bg-primary/10 text-primary"
             />
           </>
         )}
@@ -181,12 +169,12 @@ export default function DashboardPage() {
               <AreaChart data={incomeData} margin={{ left: 4, right: 8, top: 8 }}>
                 <defs>
                   <linearGradient id="gradBilled" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#2b3f73" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#2b3f73" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gradCollected" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#3f8fb0" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#3f8fb0" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
@@ -197,7 +185,7 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="Billed"
-                  stroke="#7c3aed"
+                  stroke="#2b3f73"
                   strokeWidth={2.5}
                   fill="url(#gradBilled)"
                   activeDot={{ r: 4 }}
@@ -205,7 +193,7 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="Collected"
-                  stroke="#10b981"
+                  stroke="#3f8fb0"
                   strokeWidth={2.5}
                   fill="url(#gradCollected)"
                   activeDot={{ r: 4 }}
@@ -224,14 +212,14 @@ export default function DashboardPage() {
               <BarChart data={agingData} margin={{ left: 4, right: 8, top: 8 }}>
                 <defs>
                   <linearGradient id="gradBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.65} />
+                    <stop offset="0%" stopColor="#3a5390" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#2b3f73" stopOpacity={0.7} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
                 <XAxis dataKey="bucket" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis fontSize={11} tickLine={false} axisLine={false} width={44} tickFormatter={kAxis} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(124,58,237,0.06)" }} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(43,63,115,0.06)" }} />
                 <Bar name="Outstanding" dataKey="amount" fill="url(#gradBar)" radius={[6, 6, 0, 0]} maxBarSize={56} />
               </BarChart>
             </ResponsiveContainer>

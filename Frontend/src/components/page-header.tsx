@@ -30,12 +30,12 @@ export function PageHeader({
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <div className="grid size-10 shrink-0 place-items-center rounded-md border border-border bg-accent text-primary">
             <Icon className="size-5" />
           </div>
         )}
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+          <h1 className="font-heading text-xl font-semibold sm:text-2xl">{title}</h1>
           {description && (
             <p className="text-sm text-muted-foreground">{description}</p>
           )}
