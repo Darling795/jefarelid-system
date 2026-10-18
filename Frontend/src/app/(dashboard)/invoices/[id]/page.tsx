@@ -8,7 +8,12 @@ import { toast } from "sonner";
 import { ArrowLeft, Ban, LoaderCircle, Plus, Printer } from "lucide-react";
 
 import { getInvoice, voidInvoice } from "@/lib/api/invoices";
-import { createPayment } from "@/lib/api/payments";
+import {
+  createPayment,
+  PAYMENT_METHOD_LABEL,
+  type PaymentMethod,
+} from "@/lib/api/payments";
+import { applyTenantCredit } from "@/lib/api/tenants";
 import { ApiError } from "@/lib/api/types";
 import { formatDate, formatDateTime, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
@@ -26,6 +31,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -50,8 +62,16 @@ export default function InvoiceDetailPage() {
   const qc = useQueryClient();
   const [payOpen, setPayOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyAmount, setApplyAmount] = useState("");
   const [voidReason, setVoidReason] = useState("");
-  const [pay, setPay] = useState({ amountPaid: "", paymentDate: "", orNumber: "", paymentMethod: "cash", remarks: "" });
+  const [pay, setPay] = useState<{
+    amountPaid: string;
+    paymentDate: string;
+    paymentMethod: PaymentMethod;
+    checkNumber: string;
+    remarks: string;
+  }>({ amountPaid: "", paymentDate: "", paymentMethod: "cash", checkNumber: "", remarks: "" });
 
   const { data, isLoading } = useQuery({ queryKey: ["invoice", id], queryFn: () => getInvoice(id) });
 
@@ -63,8 +83,9 @@ export default function InvoiceDetailPage() {
         invoiceId: id,
         amountPaid: pay.amountPaid,
         paymentDate: pay.paymentDate,
-        orNumber: pay.orNumber || undefined,
-        paymentMethod: pay.paymentMethod || undefined,
+        paymentMethod: pay.paymentMethod,
+        checkNumber:
+          pay.paymentMethod === "postdated_check" ? pay.checkNumber : undefined,
         remarks: pay.remarks || undefined,
       }),
     onSuccess: async (result) => {
@@ -76,7 +97,7 @@ export default function InvoiceDetailPage() {
         toast.success("Payment recorded.");
       }
       setPayOpen(false);
-      setPay({ amountPaid: "", paymentDate: "", orNumber: "", paymentMethod: "cash", remarks: "" });
+      setPay({ amountPaid: "", paymentDate: "", paymentMethod: "cash", checkNumber: "", remarks: "" });
       await refresh();
       await qc.invalidateQueries({ queryKey: ["invoices"] });
     },
@@ -84,9 +105,29 @@ export default function InvoiceDetailPage() {
       const code = e instanceof ApiError ? e.code : "";
       const msg =
         code === "OVERPAYMENT" ? "This invoice is already fully paid."
-        : code === "DUPLICATE_OR_NUMBER" ? "That OR number is already used."
         : code === "INVOICE_VOIDED" ? "This invoice is voided."
         : "Could not record payment.";
+      toast.error(msg);
+    },
+  });
+
+  const applyCredit = useMutation({
+    mutationFn: () =>
+      applyTenantCredit(data!.tenant.id, { invoiceId: id, amount: applyAmount }),
+    onSuccess: async () => {
+      toast.success("Advance credit applied to this invoice.");
+      setApplyOpen(false);
+      setApplyAmount("");
+      await refresh();
+      await qc.invalidateQueries({ queryKey: ["invoices"] });
+      await qc.invalidateQueries({ queryKey: ["tenant", data!.tenant.id] });
+    },
+    onError: (e) => {
+      const code = e instanceof ApiError ? e.code : "";
+      const msg =
+        code === "INSUFFICIENT_CREDIT" ? "Not enough advance credit available."
+        : code === "OVERPAYMENT" ? "That exceeds the invoice balance."
+        : "Could not apply credit.";
       toast.error(msg);
     },
   });
@@ -158,6 +199,21 @@ export default function InvoiceDetailPage() {
                 <Row label="Amount paid" value={formatPHP(data.amountPaid)} />
                 <div className="my-1 border-t" />
                 <Row label="Balance" value={formatPHP(data.balance)} strong />
+                {Number(data.advanceCreditAvailable) > 0 && (
+                  <div className="mt-2 flex items-center justify-between rounded-md bg-muted/50 px-2 py-2">
+                    <span className="text-sm">
+                      Advance credit available
+                      <span className="ml-2 font-semibold tabular-nums">
+                        {formatPHP(data.advanceCreditAvailable)}
+                      </span>
+                    </span>
+                    {data.status !== "voided" && data.status !== "paid" && (
+                      <Button size="sm" variant="outline" onClick={() => setApplyOpen(true)}>
+                        Apply
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <div className="mt-2 border-t pt-2">
                   <Row label="Generated" value={formatDateTime(data.generatedAt)} />
                 </div>
@@ -173,18 +229,20 @@ export default function InvoiceDetailPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>OR #</TableHead>
                   <TableHead>Method</TableHead>
+                  <TableHead>Check #</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.payments.length === 0 && (
-                  <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No payments.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No payments.</TableCell></TableRow>
                 )}
                 {data.payments.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{formatDate(p.paymentDate)}</TableCell>
                     <TableCell className="tabular-nums">{p.orNumber ?? "—"}</TableCell>
-                    <TableCell>{p.paymentMethod ?? "—"}</TableCell>
+                    <TableCell>{PAYMENT_METHOD_LABEL[p.paymentMethod ?? ""] ?? p.paymentMethod ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums">{p.checkNumber ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatPHP(p.amountPaid)}</TableCell>
                   </TableRow>
                 ))}
@@ -213,19 +271,74 @@ export default function InvoiceDetailPage() {
                     <Input type="date" required value={pay.paymentDate} onChange={(e) => setPay((f) => ({ ...f, paymentDate: e.target.value }))} />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Label>OR number</Label>
-                    <Input value={pay.orNumber} onChange={(e) => setPay((f) => ({ ...f, orNumber: e.target.value }))} />
-                  </div>
-                  <div className="flex flex-col gap-2">
                     <Label>Method</Label>
-                    <Input value={pay.paymentMethod} onChange={(e) => setPay((f) => ({ ...f, paymentMethod: e.target.value }))} />
+                    <Select
+                      value={pay.paymentMethod}
+                      onValueChange={(v) =>
+                        setPay((f) => ({ ...f, paymentMethod: (v as PaymentMethod) ?? "cash" }))
+                      }
+                      items={[
+                        { value: "cash", label: "Cash" },
+                        { value: "postdated_check", label: "Postdated check" },
+                      ]}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="postdated_check">Postdated check</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {pay.paymentMethod === "postdated_check" && (
+                    <div className="flex flex-col gap-2">
+                      <Label>Check number</Label>
+                      <Input
+                        required
+                        value={pay.checkNumber}
+                        onChange={(e) => setPay((f) => ({ ...f, checkNumber: e.target.value }))}
+                      />
+                    </div>
+                  )}
                 </div>
+                <p className="-mt-2 pb-2 text-xs text-muted-foreground">
+                  The OR number is assigned automatically when the payment is saved.
+                </p>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
                   <Button type="submit" disabled={recordPayment.isPending}>
                     {recordPayment.isPending && <LoaderCircle className="animate-spin" />}
                     Record
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Apply advance credit */}
+          <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+            <DialogContent>
+              <form onSubmit={(e) => { e.preventDefault(); if (!applyCredit.isPending) applyCredit.mutate(); }}>
+                <DialogHeader>
+                  <DialogTitle>Apply advance credit</DialogTitle>
+                  <DialogDescription>
+                    {formatPHP(data.advanceCreditAvailable)} available · invoice balance{" "}
+                    {formatPHP(data.balance)}.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-2 py-4">
+                  <Label>Amount to apply (PHP)</Label>
+                  <Input
+                    inputMode="decimal"
+                    required
+                    value={applyAmount}
+                    onChange={(e) => setApplyAmount(e.target.value)}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setApplyOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={applyCredit.isPending}>
+                    {applyCredit.isPending && <LoaderCircle className="animate-spin" />}
+                    Apply credit
                   </Button>
                 </DialogFooter>
               </form>

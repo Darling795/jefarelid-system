@@ -209,6 +209,24 @@ base rate never increases unless a rate is deliberately set per lease.
 - Buildings page is now tabbed (**Buildings** | **Vacant units**); the buildings
   list has sortable Name/Rooms/Occupied headers. Verified end-to-end against seed.
 
+## 7b. Tester follow-ups (round 2)
+
+Second round of client/tester feedback, implemented + QA'd (17 live assertions pass):
+
+- **OR numbers auto-generated** — on payment, the system assigns a unique
+  sequential `OR-000001` (no manual entry, no duplicates). Migration adds nothing
+  here; generation is in `payments.service.nextOrNumber()`. OR is read-only in the
+  UI and immutable on edit. `DUPLICATE_OR_NUMBER` is effectively retired.
+- **Payment method = Cash | Postdated check** — method is now a dropdown; selecting
+  Postdated check reveals a required **Check number** field. New column
+  `RentalPayment.checkNumber` (migration `payment_method_check_number`). Shown on
+  the invoice detail payments table and the Payments page.
+- **Advance credit on the invoice** — invoice detail returns
+  `advanceCreditAvailable` (tenant's unapplied credit) and offers an **Apply**
+  action right on the invoice; the tenant page still shows the balance too.
+- **Whole invoice row clickable** — clicking anywhere on an invoice row opens it
+  (not just the tenant/period); the tenant link stays for open-in-new-tab.
+
 ## 8. Follow-ups before production
 
 - **PDF export** — enabled. `puppeteer` is a dependency (downloads Chromium on install) and `toPdf()` renders the report HTML to A4. Verified end-to-end (`GET /reports/occupancy?format=pdf` → `application/pdf`). If Chromium is ever missing on a host, `format=pdf` still fails gracefully with a clear 501; `xlsx`/`json` are unaffected.

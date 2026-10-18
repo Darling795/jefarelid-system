@@ -239,6 +239,8 @@ POST   /invoices/:id/void          { reason }
 ```
 
 `amountPaid` and `balance` are computed by the backend on read. They are not stored columns.
+The invoice detail also returns `advanceCreditAvailable` — the tenant's unapplied
+advance-credit balance — so the invoice can show it and offer to apply it.
 
 Omitting `contractId` on generate runs for all active contracts. Duplicate period returns `INVOICE_ALREADY_EXISTS`.
 
@@ -248,14 +250,18 @@ Omitting `contractId` on generate runs for all active contracts. Duplicate perio
 
 ```
 GET    /payments                   → list; filters: tenantId, buildingId, periodMonth (YYYY-MM), orNumber (partial), dateFrom, dateTo
-POST   /payments                   { invoiceId, amountPaid, paymentDate, orNumber, paymentMethod, remarks }
+POST   /payments                   { invoiceId, amountPaid, paymentDate, paymentMethod, checkNumber?, remarks }
 GET    /payments/:id
-PATCH  /payments/:id               { amountPaid?, paymentDate?, orNumber?, paymentMethod?, remarks? } → edit a recorded payment; re-checks OVERPAYMENT + DUPLICATE_OR_NUMBER and refreshes invoice status
+PATCH  /payments/:id               { amountPaid?, paymentDate?, paymentMethod?, checkNumber?, remarks? } → edit a recorded payment; re-checks OVERPAYMENT and refreshes invoice status
 DELETE /payments/:id               { reason }  → Super Admin only
 GET    /payments/outstanding       → filters: tenantId, buildingId; aged buckets
 ```
 
-Errors: `OVERPAYMENT`, `INVOICE_VOIDED`, `DUPLICATE_OR_NUMBER`.
+**OR number** is **auto-generated** server-side (`OR-000001`, sequential, unique)
+— it is not a client input and cannot be edited. **`paymentMethod`** is `cash`
+or `postdated_check`; `checkNumber` is required when `postdated_check`.
+
+Errors: `OVERPAYMENT`, `INVOICE_VOIDED`.
 
 **Overpayment → advance credit (item 5.2).** A payment greater than the invoice
 balance is **not** rejected: the balance is applied to the invoice and the excess

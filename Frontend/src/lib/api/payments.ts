@@ -1,6 +1,14 @@
 import { apiClient } from "./client";
 import type { ListMeta } from "./types";
 
+export type PaymentMethod = "cash" | "postdated_check";
+
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cash: "Cash",
+  postdated_check: "Postdated check",
+  advance_credit: "Advance credit",
+};
+
 export interface PaymentListItem {
   id: string;
   invoiceId: string;
@@ -10,6 +18,7 @@ export interface PaymentListItem {
   paymentDate: string;
   orNumber: string | null;
   paymentMethod: string | null;
+  checkNumber: string | null;
 }
 
 export interface Outstanding {
@@ -24,8 +33,8 @@ export interface CreatePaymentInput {
   invoiceId: string;
   amountPaid: string;
   paymentDate: string;
-  orNumber?: string;
-  paymentMethod?: string;
+  paymentMethod: PaymentMethod;
+  checkNumber?: string;
   remarks?: string;
 }
 
@@ -61,8 +70,8 @@ export async function createPayment(
 export interface UpdatePaymentInput {
   amountPaid?: string;
   paymentDate?: string;
-  orNumber?: string;
-  paymentMethod?: string;
+  paymentMethod?: PaymentMethod;
+  checkNumber?: string;
   remarks?: string;
 }
 

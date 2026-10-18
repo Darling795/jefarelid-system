@@ -242,6 +242,7 @@ model RentalPayment {
   paymentDate   DateTime @map("payment_date") @db.Date
   orNumber      String?  @map("or_number")
   paymentMethod String?  @map("payment_method")
+  checkNumber   String?  @map("check_number")
   remarks       String?
   recordedById  String?  @map("recorded_by")
   createdAt     DateTime @default(now()) @map("created_at")

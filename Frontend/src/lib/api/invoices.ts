@@ -23,6 +23,7 @@ export interface InvoicePaymentRow {
   paymentDate: string;
   orNumber: string | null;
   paymentMethod: string | null;
+  checkNumber: string | null;
   remarks: string | null;
 }
 
@@ -44,6 +45,7 @@ export interface InvoiceDetail {
   dueDate: string;
   status: string;
   generatedAt: string;
+  advanceCreditAvailable: string;
   payments: InvoicePaymentRow[];
 }
 

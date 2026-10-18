@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -95,6 +96,7 @@ function SortHeader({
 
 export default function InvoicesPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const [status, setStatus] = useState("all");
   const [buildingId, setBuildingId] = useState("all");
   const [period, setPeriod] = useState("");
@@ -202,20 +204,24 @@ export default function InvoicesPage() {
   );
 
   const Row = (inv: InvoiceListItem) => (
-    <TableRow key={inv.id} className="cursor-pointer">
+    <TableRow
+      key={inv.id}
+      className="cursor-pointer"
+      onClick={() => router.push(`/invoices/${inv.id}`)}
+    >
       <TableCell>
-        <Link href={`/invoices/${inv.id}`} className="font-medium hover:underline">
+        <Link
+          href={`/invoices/${inv.id}`}
+          className="font-medium hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
           {inv.tenantName}
         </Link>
       </TableCell>
       <TableCell className="text-muted-foreground">
         {inv.buildingName} · {inv.roomNumber}
       </TableCell>
-      <TableCell>
-        <Link href={`/invoices/${inv.id}`} className="hover:underline">
-          {formatPeriod(inv.periodMonth)}
-        </Link>
-      </TableCell>
+      <TableCell>{formatPeriod(inv.periodMonth)}</TableCell>
       <TableCell className="text-right tabular-nums">{formatPHP(inv.netReceivable)}</TableCell>
       <TableCell className="text-right tabular-nums">{formatPHP(inv.balance)}</TableCell>
       <TableCell>{formatDate(inv.dueDate)}</TableCell>

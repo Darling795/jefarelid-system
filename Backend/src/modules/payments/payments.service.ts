@@ -38,20 +38,6 @@ export class PaymentsService {
       );
     }
 
-    if (dto.orNumber) {
-      const dup = await this.prisma.rentalPayment.findFirst({
-        where: { orNumber: dto.orNumber },
-        select: { id: true },
-      });
-      if (dup) {
-        throw new AppException(
-          ApiCode.DUPLICATE_OR_NUMBER,
-          'That OR number has already been recorded.',
-          HttpStatus.CONFLICT,
-        );
-      }
-    }
-
     const paid = sumPaid(invoice.payments);
     const balance = invoice.netReceivable.sub(paid);
     const amount = new Prisma.Decimal(dto.amountPaid);
@@ -72,14 +58,17 @@ export class PaymentsService {
     // doubled — the invoice gets `applied`, the credit gets `excess`.
     const applied = amount.greaterThan(balance) ? balance : amount;
     const excess = amount.sub(applied);
+    const orNumber = await this.nextOrNumber();
 
     const payment = await this.prisma.rentalPayment.create({
       data: {
         invoiceId: dto.invoiceId,
         amountPaid: applied.toFixed(2),
         paymentDate: new Date(`${dto.paymentDate}T00:00:00.000Z`),
-        orNumber: dto.orNumber,
+        orNumber,
         paymentMethod: dto.paymentMethod,
+        checkNumber:
+          dto.paymentMethod === 'postdated_check' ? dto.checkNumber : null,
         remarks:
           excess.greaterThan(0)
             ? [dto.remarks, `₱${amount.toFixed(2)} received; ₱${excess.toFixed(2)} to advance credit`]
@@ -97,9 +86,7 @@ export class PaymentsService {
           amount: excess.toFixed(2),
           remaining: excess.toFixed(2),
           sourceInvoiceId: invoice.id,
-          note: `Excess from payment for ${invoice.periodMonth}${
-            dto.orNumber ? ` (OR ${dto.orNumber})` : ''
-          }`,
+          note: `Excess from payment for ${invoice.periodMonth} (OR ${orNumber})`,
           recordedById: userId,
         },
       });
@@ -173,6 +160,7 @@ export class PaymentsService {
         paymentDate: dateOnly(p.paymentDate),
         orNumber: p.orNumber,
         paymentMethod: p.paymentMethod,
+        checkNumber: p.checkNumber,
       })),
       { page, pageSize, total },
     );
@@ -201,6 +189,7 @@ export class PaymentsService {
       paymentDate: dateOnly(p.paymentDate),
       orNumber: p.orNumber,
       paymentMethod: p.paymentMethod,
+      checkNumber: p.checkNumber,
       remarks: p.remarks,
       recordedBy: p.recordedBy,
     };
@@ -211,8 +200,8 @@ export class PaymentsService {
     dto: {
       amountPaid?: string;
       paymentDate?: string;
-      orNumber?: string;
       paymentMethod?: string;
+      checkNumber?: string;
       remarks?: string;
     },
   ) {
@@ -246,20 +235,14 @@ export class PaymentsService {
       }
     }
 
-    // OR number stays unique across all payments (ignoring this one).
-    if (dto.orNumber) {
-      const dup = await this.prisma.rentalPayment.findFirst({
-        where: { orNumber: dto.orNumber, id: { not: id } },
-        select: { id: true },
-      });
-      if (dup) {
-        throw new AppException(
-          ApiCode.DUPLICATE_OR_NUMBER,
-          'That OR number has already been recorded.',
-          HttpStatus.CONFLICT,
-        );
-      }
-    }
+    // OR number is system-assigned and immutable. A check number is kept only
+    // for a postdated check; switching to cash clears it.
+    const checkNumber =
+      dto.paymentMethod === undefined
+        ? dto.checkNumber
+        : dto.paymentMethod === 'postdated_check'
+          ? dto.checkNumber
+          : null;
 
     await this.prisma.rentalPayment.update({
       where: { id },
@@ -268,8 +251,8 @@ export class PaymentsService {
         paymentDate: dto.paymentDate
           ? new Date(`${dto.paymentDate}T00:00:00.000Z`)
           : undefined,
-        orNumber: dto.orNumber,
         paymentMethod: dto.paymentMethod,
+        checkNumber,
         remarks: dto.remarks,
       },
     });
@@ -340,6 +323,24 @@ export class PaymentsService {
       days90Plus: buckets.days90Plus.toFixed(2),
       total: total.toFixed(2),
     };
+  }
+
+  /**
+   * Next sequential Official Receipt number, `OR-000001`, unique by construction
+   * (client panel: OR auto-generated, no duplicates). Derived from the highest
+   * existing `OR-<n>`; manually-entered non-matching ORs are ignored.
+   */
+  private async nextOrNumber(): Promise<string> {
+    const rows = await this.prisma.rentalPayment.findMany({
+      where: { orNumber: { startsWith: 'OR-' } },
+      select: { orNumber: true },
+    });
+    let max = 0;
+    for (const r of rows) {
+      const m = /^OR-(\d+)$/.exec(r.orNumber ?? '');
+      if (m) max = Math.max(max, Number(m[1]));
+    }
+    return `OR-${String(max + 1).padStart(6, '0')}`;
   }
 
   /** Recompute stored invoice status after payments change. */

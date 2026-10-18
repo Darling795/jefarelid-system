@@ -161,6 +161,15 @@ export class InvoicesService {
 
     const paid = sumPaid(inv.payments);
     const balance = inv.netReceivable.sub(paid);
+    // Tenant's unapplied advance credit, so the invoice can show it and offer
+    // to apply it (client panel: advance payment indicated on the invoice).
+    const creditAgg = await this.prisma.tenantCredit.aggregate({
+      where: { tenantId: inv.contract.tenant.id },
+      _sum: { remaining: true },
+    });
+    const advanceCreditAvailable = (
+      creditAgg._sum.remaining ?? new Prisma.Decimal(0)
+    ).toFixed(2);
     // All rooms covered by the lease (fall back to the primary for legacy data).
     const roomNumbers =
       inv.contract.rooms.length > 0
@@ -184,12 +193,14 @@ export class InvoicesService {
       dueDate: dateOnly(inv.dueDate),
       status: displayStatus(inv.status, inv.netReceivable, paid, inv.dueDate),
       generatedAt: inv.generatedAt.toISOString(),
+      advanceCreditAvailable,
       payments: inv.payments.map((p) => ({
         id: p.id,
         amountPaid: money(p.amountPaid),
         paymentDate: dateOnly(p.paymentDate),
         orNumber: p.orNumber,
         paymentMethod: p.paymentMethod,
+        checkNumber: p.checkNumber,
         remarks: p.remarks,
       })),
     };

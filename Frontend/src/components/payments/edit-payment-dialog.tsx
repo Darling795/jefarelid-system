@@ -5,7 +5,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { LoaderCircle } from "lucide-react";
 
-import { updatePayment, type PaymentListItem } from "@/lib/api/payments";
+import {
+  updatePayment,
+  type PaymentListItem,
+  type PaymentMethod,
+} from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +22,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ERR: Record<string, string> = {
   OVERPAYMENT: "That amount exceeds the invoice's outstanding balance.",
-  DUPLICATE_OR_NUMBER: "That OR number is already used on another payment.",
 };
 
 export function EditPaymentDialog({
@@ -32,11 +42,16 @@ export function EditPaymentDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    amountPaid: string;
+    paymentDate: string;
+    paymentMethod: PaymentMethod;
+    checkNumber: string;
+  }>({
     amountPaid: "",
     paymentDate: "",
-    orNumber: "",
-    paymentMethod: "",
+    paymentMethod: "cash",
+    checkNumber: "",
   });
 
   useEffect(() => {
@@ -44,22 +59,25 @@ export function EditPaymentDialog({
       setForm({
         amountPaid: payment.amountPaid,
         paymentDate: payment.paymentDate.slice(0, 10),
-        orNumber: payment.orNumber ?? "",
-        paymentMethod: payment.paymentMethod ?? "",
+        paymentMethod:
+          payment.paymentMethod === "postdated_check" ? "postdated_check" : "cash",
+        checkNumber: payment.checkNumber ?? "",
       });
     }
   }, [payment]);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k: "amountPaid" | "paymentDate" | "checkNumber") => (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const mutation = useMutation({
     mutationFn: () =>
       updatePayment(payment!.id, {
         amountPaid: form.amountPaid,
         paymentDate: form.paymentDate,
-        orNumber: form.orNumber.trim() || undefined,
-        paymentMethod: form.paymentMethod.trim() || undefined,
+        paymentMethod: form.paymentMethod,
+        checkNumber:
+          form.paymentMethod === "postdated_check" ? form.checkNumber : undefined,
       }),
     onSuccess: async () => {
       toast.success("Payment updated.");
@@ -100,12 +118,33 @@ export function EditPaymentDialog({
             </div>
             <div className="flex flex-col gap-2">
               <Label>OR #</Label>
-              <Input value={form.orNumber} onChange={set("orNumber")} />
+              <Input value={payment?.orNumber ?? "—"} disabled readOnly />
             </div>
             <div className="flex flex-col gap-2">
               <Label>Method</Label>
-              <Input value={form.paymentMethod} onChange={set("paymentMethod")} />
+              <Select
+                value={form.paymentMethod}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, paymentMethod: (v as PaymentMethod) ?? "cash" }))
+                }
+                items={[
+                  { value: "cash", label: "Cash" },
+                  { value: "postdated_check", label: "Postdated check" },
+                ]}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="postdated_check">Postdated check</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {form.paymentMethod === "postdated_check" && (
+              <div className="col-span-2 flex flex-col gap-2">
+                <Label>Check number</Label>
+                <Input required value={form.checkNumber} onChange={set("checkNumber")} />
+              </div>
+            )}
           </div>
 
           <DialogFooter>

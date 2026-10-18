@@ -4,7 +4,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard, Pencil, X } from "lucide-react";
 
-import { getOutstanding, listPayments, type PaymentListItem } from "@/lib/api/payments";
+import {
+  getOutstanding,
+  listPayments,
+  PAYMENT_METHOD_LABEL,
+  type PaymentListItem,
+} from "@/lib/api/payments";
 import { listTenants } from "@/lib/api/tenants";
 import { listBuildings } from "@/lib/api/buildings";
 import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
@@ -205,7 +210,10 @@ export default function PaymentsPage() {
                 <TableCell>{p.tenantName}</TableCell>
                 <TableCell>{formatPeriod(p.periodMonth)}</TableCell>
                 <TableCell className="tabular-nums">{p.orNumber ?? "—"}</TableCell>
-                <TableCell>{p.paymentMethod ?? "—"}</TableCell>
+                <TableCell>
+                  {PAYMENT_METHOD_LABEL[p.paymentMethod ?? ""] ?? p.paymentMethod ?? "—"}
+                  {p.checkNumber ? ` · #${p.checkNumber}` : ""}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPHP(p.amountPaid)}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon-sm" onClick={() => setEditing(p)} aria-label="Edit payment">
