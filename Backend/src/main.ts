@@ -1,5 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import connectPgSimple from 'connect-pg-simple';
 import session from 'express-session';
 import { NextFunction, Request, Response } from 'express';
@@ -20,16 +21,28 @@ function clientIp(req: Request): string | undefined {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // All routes are served under /api (see API-CONTRACT.md base URL).
   app.setGlobalPrefix('api');
 
-  // Allow the Next.js frontend to send credentialed (cookie) requests.
+  // Behind a reverse proxy (Railway/Render/any HTTPS host) so Express trusts
+  // X-Forwarded-* and marks the connection secure — required for secure cookies.
+  // Harmless locally (no proxy present).
+  app.set('trust proxy', 1);
+
+  // Allow the Next.js frontend to send credentialed (cookie) requests. In
+  // production CORS_ORIGIN must be the exact frontend URL (no trailing slash).
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
     credentials: true,
   });
+
+  // When the frontend and backend are on different HTTPS domains (e.g. two
+  // Railway services), the session cookie must be Secure + SameSite=None or the
+  // browser drops it. Set COOKIE_SECURE=true in that deployment. Locally it
+  // stays lax/insecure so http://localhost works.
+  const cookieSecure = process.env.COOKIE_SECURE === 'true';
 
   // Session-based auth, stored in Postgres (SPEC section 4).
   const PgStore = connectPgSimple(session);
@@ -43,8 +56,8 @@ async function bootstrap() {
       rolling: true, // reset the 8h window on activity → expires after inactivity
       cookie: {
         httpOnly: true,
-        sameSite: 'lax',
-        secure: false, // local development only
+        sameSite: cookieSecure ? 'none' : 'lax',
+        secure: cookieSecure,
         maxAge: 1000 * 60 * 60 * 8, // 8 hours
       },
     }),
@@ -61,8 +74,9 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, transform: true }),
   );
 
+  // Bind to 0.0.0.0 so the container's platform router can reach it.
   const port = process.env.PORT ?? 3001;
-  await app.listen(port);
+  await app.listen(Number(port), '0.0.0.0');
 }
 
 void bootstrap();

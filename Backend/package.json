@@ -4,6 +4,7 @@
   "description": "JEFARELID Building and Room Rental Management System — Backend (Application + Database Layer)",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",

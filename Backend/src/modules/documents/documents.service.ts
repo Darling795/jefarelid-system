@@ -6,8 +6,13 @@ import { PRISMA, ExtendedPrismaClient } from '../../common/prisma/prisma.tokens'
 import { ApiCode } from '../../common/http/api-codes';
 import { AppException } from '../../common/http/app-exception';
 
-/** Local-disk uploads directory (created on boot). Sits under the backend cwd. */
-export const UPLOAD_DIR = join(process.cwd(), 'uploads');
+/**
+ * Uploads directory (created on boot). Defaults under the backend cwd for local
+ * dev; set UPLOAD_DIR to a mounted volume path in production (e.g. a Railway
+ * volume) so files survive redeploys — the container filesystem is otherwise
+ * reset on each deploy.
+ */
+export const UPLOAD_DIR = process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
 mkdirSync(UPLOAD_DIR, { recursive: true });
 
 interface UploadMeta {

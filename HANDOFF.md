@@ -263,6 +263,17 @@ buildings; anything else was typed in. For bulk/offline cleanup there are also:
   (rooms, contracts, invoices, payments, utility bills/payments, advance credits,
   documents) in FK-safe order, inside a transaction. Destructive, no undo.
 
+## 7d. Deploying (Railway)
+
+The repo is Railway-ready: `Backend/railway.json` + `Frontend/railway.json` define
+build/run, backend migrations apply on every deploy (`prisma migrate deploy` in the
+start command), and production cross-site cookies are enabled via `COOKIE_SECURE=true`
+(the server already sets `trust proxy` and binds `0.0.0.0`). Full click-by-click
+runbook — Postgres + backend + frontend in one project, env vars, one-time seed —
+is in **`DEPLOY.md`**. Key prod env vars: backend `DATABASE_URL`, `SESSION_SECRET`,
+`COOKIE_SECURE=true`, `CORS_ORIGIN` (exact frontend URL); frontend
+`NEXT_PUBLIC_API_URL` (backend URL + `/api`, baked at build time).
+
 ## 8. Follow-ups before production
 
 - **PDF export** — enabled. `puppeteer` is a dependency (downloads Chromium on install) and `toPdf()` renders the report HTML to A4. Verified end-to-end (`GET /reports/occupancy?format=pdf` → `application/pdf`). If Chromium is ever missing on a host, `format=pdf` still fails gracefully with a clear 501; `xlsx`/`json` are unaffected.
