@@ -1,4 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PRISMA, ExtendedPrismaClient } from '../../common/prisma/prisma.tokens';
 import { ApiCode } from '../../common/http/api-codes';
@@ -19,6 +20,47 @@ export class RoomsService {
       include: roomListInclude,
     });
     return rooms.map(mapRoomListItem);
+  }
+
+  /**
+   * Vacant units portfolio-wide with their rental prices (SPEC panel item 3).
+   * A unit is vacant when it is active and covered by no active contract
+   * (occupancy derived from contracts, never the denormalized status field).
+   * Sortable by price or building so staff can scan availability by cost.
+   */
+  async listVacant(query: {
+    buildingId?: string;
+    sortBy?: string;
+    sortDir?: string;
+  }) {
+    const dir: Prisma.SortOrder = query.sortDir === 'desc' ? 'desc' : 'asc';
+    const orderBy: Prisma.RoomOrderByWithRelationInput[] =
+      query.sortBy === 'baseRate'
+        ? [{ baseRate: dir }, { roomNumber: 'asc' }]
+        : query.sortBy === 'roomNumber'
+          ? [{ roomNumber: dir }]
+          : [{ building: { name: dir } }, { roomNumber: 'asc' }];
+
+    const rooms = await this.prisma.room.findMany({
+      where: {
+        isActive: true,
+        ...(query.buildingId ? { buildingId: query.buildingId } : {}),
+        contractRooms: { none: { contract: { status: 'active' } } },
+      },
+      orderBy,
+      include: { building: { select: { id: true, name: true } } },
+    });
+
+    return rooms.map((r) => ({
+      id: r.id,
+      roomNumber: r.roomNumber,
+      floor: r.floor,
+      areaSqm: money(r.areaSqm),
+      baseRate: money(r.baseRate),
+      status: r.status,
+      buildingId: r.buildingId,
+      buildingName: r.building.name,
+    }));
   }
 
   async create(buildingId: string, dto: CreateRoomDto) {

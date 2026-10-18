@@ -10,6 +10,7 @@ import { logout } from "@/lib/api/auth";
 import { AUTH_QUERY_KEY } from "@/lib/auth/use-auth";
 import { navGroupsForRole } from "@/lib/nav";
 import type { AuthUser } from "@/lib/api/types";
+import { roleLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,11 +24,6 @@ import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { AlertsBell } from "@/components/alerts-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { Logomark } from "@/components/logomark";
-
-const ROLE_LABEL: Record<AuthUser["role"], string> = {
-  super_admin: "Super Admin",
-  admin: "Admin",
-};
 
 function greeting(hour: number): string {
   if (hour < 12) return "Good morning";
@@ -167,7 +163,7 @@ export function AppShell({ user, children }: { user: AuthUser; children: ReactNo
                   <span className="text-primary">{firstName}</span>
                 </h1>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {ROLE_LABEL[user.role]} · JEFARELID System
+                  {roleLabel(user.role)} · JEFARELID System
                 </p>
               </div>
             </div>

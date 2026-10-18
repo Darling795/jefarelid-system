@@ -42,7 +42,18 @@ export async function listPayments(params: {
   return res.data;
 }
 
-export async function createPayment(input: CreatePaymentInput) {
+export interface CreatePaymentResult {
+  id: string;
+  amountPaid: string;
+  /** Portion applied to the invoice (may be less than the cash received). */
+  appliedAmount: string;
+  /** Excess captured as a tenant advance credit, if any. */
+  advanceCredit: string | null;
+}
+
+export async function createPayment(
+  input: CreatePaymentInput,
+): Promise<CreatePaymentResult> {
   const res = await apiClient.post("/payments", input);
   return res.data.data;
 }

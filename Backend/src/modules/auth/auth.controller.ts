@@ -36,9 +36,11 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   async logout(
+    @CurrentUser() user: User,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
+    await this.authService.logout(user.id);
     await new Promise<void>((resolve) => req.session.destroy(() => resolve()));
     res.clearCookie('connect.sid');
   }

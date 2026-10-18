@@ -5,11 +5,33 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Pencil, Trash2, Wallet } from "lucide-react";
 
-import { deleteTenant, getTenant, getTenantPayments } from "@/lib/api/tenants";
+import {
+  applyTenantCredit,
+  deleteTenant,
+  getTenant,
+  getTenantCredits,
+  getTenantPayments,
+} from "@/lib/api/tenants";
+import { listInvoices } from "@/lib/api/invoices";
 import { ApiError } from "@/lib/api/types";
-import { formatDate, formatPHP } from "@/lib/format";
+import { formatDate, formatDateTime, formatPHP, formatPeriod } from "@/lib/format";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { TenantFormDialog } from "@/components/tenants/tenant-form-dialog";
@@ -17,6 +39,8 @@ import { DocumentsPanel } from "@/components/documents/documents-panel";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -42,6 +66,8 @@ export default function TenantDetailPage() {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyForm, setApplyForm] = useState({ invoiceId: "", amount: "" });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["tenant", id],
@@ -51,6 +77,45 @@ export default function TenantDetailPage() {
     queryKey: ["tenant", id, "payments"],
     queryFn: () => getTenantPayments(id),
   });
+  const creditsQuery = useQuery({
+    queryKey: ["tenant", id, "credits"],
+    queryFn: () => getTenantCredits(id),
+  });
+  // Unpaid invoices the credit can be applied to.
+  const openInvoicesQuery = useQuery({
+    queryKey: ["tenant", id, "open-invoices"],
+    queryFn: () => listInvoices({ tenantId: id }),
+    enabled: applyOpen,
+  });
+
+  const applyCredit = useMutation({
+    mutationFn: () =>
+      applyTenantCredit(id, {
+        invoiceId: applyForm.invoiceId,
+        amount: applyForm.amount,
+      }),
+    onSuccess: async () => {
+      toast.success("Advance credit applied.");
+      setApplyOpen(false);
+      setApplyForm({ invoiceId: "", amount: "" });
+      await queryClient.invalidateQueries({ queryKey: ["tenant", id] });
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
+    onError: (err) => {
+      const code = err instanceof ApiError ? err.code : "";
+      const msg =
+        code === "INSUFFICIENT_CREDIT"
+          ? "Not enough advance credit available."
+          : code === "OVERPAYMENT"
+            ? "That exceeds the invoice balance."
+            : "Could not apply credit.";
+      toast.error(msg);
+    },
+  });
+
+  const openInvoices = (openInvoicesQuery.data?.data ?? []).filter(
+    (inv) => inv.status !== "paid" && inv.status !== "voided" && Number(inv.balance) > 0,
+  );
 
   const removeTenant = useMutation({
     mutationFn: () => deleteTenant(id),
@@ -115,19 +180,45 @@ export default function TenantDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="border-b pb-3">
-                <CardTitle className="text-base">Outstanding balance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold tabular-nums">
-                  {formatPHP(data.outstandingBalance)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Unpaid across all invoices.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col gap-4">
+              <Card>
+                <CardHeader className="border-b pb-3">
+                  <CardTitle className="text-base">Outstanding balance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold tabular-nums">
+                    {formatPHP(data.outstandingBalance)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Unpaid across all invoices.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="border-b pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Wallet className="size-4" /> Advance credit
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-semibold tabular-nums">
+                    {formatPHP(creditsQuery.data?.totalRemaining ?? "0")}
+                  </p>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Overpayments held as credit. Apply to a future invoice manually.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={Number(creditsQuery.data?.totalRemaining ?? 0) <= 0}
+                    onClick={() => setApplyOpen(true)}
+                  >
+                    Apply to invoice
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           <h2 className="mb-3 text-lg font-medium">
@@ -226,6 +317,80 @@ export default function TenantDetailPage() {
             loading={removeTenant.isPending}
             onConfirm={() => removeTenant.mutate()}
           />
+
+          {/* Apply advance credit */}
+          <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+            <DialogContent>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!applyCredit.isPending) applyCredit.mutate();
+                }}
+              >
+                <DialogHeader>
+                  <DialogTitle>Apply advance credit</DialogTitle>
+                  <DialogDescription>
+                    Available credit: {formatPHP(creditsQuery.data?.totalRemaining ?? "0")}.
+                    Choose an unpaid invoice and the amount to apply.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="flex flex-col gap-2">
+                    <Label>Invoice</Label>
+                    <Select
+                      value={applyForm.invoiceId}
+                      onValueChange={(v) =>
+                        setApplyForm((f) => ({ ...f, invoiceId: v ?? "" }))
+                      }
+                      items={openInvoices.map((inv) => ({
+                        value: inv.id,
+                        label: `${formatPeriod(inv.periodMonth)} · bal ${formatPHP(inv.balance)}`,
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an unpaid invoice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {openInvoices.map((inv) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {formatPeriod(inv.periodMonth)} · bal {formatPHP(inv.balance)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {openInvoices.length === 0 && openInvoicesQuery.isFetched && (
+                      <p className="text-xs text-muted-foreground">
+                        This tenant has no unpaid invoices.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label>Amount (PHP)</Label>
+                    <Input
+                      inputMode="decimal"
+                      required
+                      value={applyForm.amount}
+                      onChange={(e) =>
+                        setApplyForm((f) => ({ ...f, amount: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setApplyOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={applyCredit.isPending || !applyForm.invoiceId}
+                  >
+                    {applyCredit.isPending && <LoaderCircle className="animate-spin" />}
+                    Apply credit
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

@@ -9,9 +9,15 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { User } from '@prisma/client';
 
+import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { TenantsService } from './tenants.service';
-import { CreateTenantDto, UpdateTenantDto } from './dto/tenant.dto';
+import {
+  ApplyCreditDto,
+  CreateTenantDto,
+  UpdateTenantDto,
+} from './dto/tenant.dto';
 
 @Controller('tenants')
 export class TenantsController {
@@ -19,7 +25,8 @@ export class TenantsController {
 
   @Get()
   list(
-    @Query() query: { page?: string; pageSize?: string; search?: string },
+    @Query()
+    query: { page?: string; pageSize?: string; search?: string; status?: string },
   ) {
     return this.tenants.list(query);
   }
@@ -42,6 +49,20 @@ export class TenantsController {
   @Get(':id/payments')
   payments(@Param('id') id: string) {
     return this.tenants.payments(id);
+  }
+
+  @Get(':id/credits')
+  credits(@Param('id') id: string) {
+    return this.tenants.credits(id);
+  }
+
+  @Post(':id/credits/apply')
+  applyCredit(
+    @Param('id') id: string,
+    @Body() dto: ApplyCreditDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.tenants.applyCredit(id, dto, user.id);
   }
 
   @Delete(':id')

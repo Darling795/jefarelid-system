@@ -6,6 +6,7 @@ import { Session, SessionData } from 'express-session';
 import { PRISMA, ExtendedPrismaClient } from '../../common/prisma/prisma.tokens';
 import { ApiCode } from '../../common/http/api-codes';
 import { AppException } from '../../common/http/app-exception';
+import { getRequestStore } from '../../common/audit/request-context';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
@@ -88,7 +89,38 @@ export class AuthService {
     });
 
     session.userId = updated.id;
+    await this.writeAuthAudit(updated.id, 'login');
     return this.toView(updated);
+  }
+
+  /** Record a logout in the audit trail, then the controller destroys the session. */
+  async logout(userId: string): Promise<void> {
+    await this.writeAuthAudit(userId, 'logout');
+  }
+
+  /**
+   * Append a login/logout row to the audit trail (SPEC panel 8.2–8.3). Auth
+   * events have no entity write to hook, so this is the one place auditing is
+   * written explicitly rather than via the Prisma extension. Applies to every
+   * account, secretaries included. Never throws — auth must not fail on audit.
+   */
+  private async writeAuthAudit(
+    userId: string,
+    action: 'login' | 'logout',
+  ): Promise<void> {
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          userId,
+          action,
+          entityType: 'auth',
+          entityId: userId,
+          ipAddress: getRequestStore()?.ip ?? null,
+        },
+      });
+    } catch {
+      // Auditing must never break authentication.
+    }
   }
 
   async changePassword(

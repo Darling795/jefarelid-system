@@ -40,6 +40,31 @@ export interface RoomInput {
   baseRate: string;
 }
 
+export interface VacantRoom {
+  id: string;
+  roomNumber: string;
+  floor: string | null;
+  areaSqm: string | null;
+  baseRate: string;
+  status: RoomStatus;
+  buildingId: string;
+  buildingName: string;
+}
+
+export type VacantSortBy = "buildingName" | "baseRate" | "roomNumber";
+export type SortDir = "asc" | "desc";
+
+export async function listVacantRooms(params?: {
+  buildingId?: string;
+  sortBy?: VacantSortBy;
+  sortDir?: SortDir;
+}): Promise<VacantRoom[]> {
+  const res = await apiClient.get<{ data: VacantRoom[] }>("/rooms/vacant", {
+    params,
+  });
+  return unwrap(res);
+}
+
 export async function listRooms(buildingId: string): Promise<RoomListItem[]> {
   const res = await apiClient.get<{ data: RoomListItem[] }>(
     `/buildings/${buildingId}/rooms`,

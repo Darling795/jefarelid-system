@@ -217,7 +217,12 @@ export class InvoicesService {
       contract: {
         select: {
           tenant: { select: { businessName: true } },
-          room: { select: { roomNumber: true, building: { select: { name: true } } } },
+          room: {
+            select: {
+              roomNumber: true,
+              building: { select: { id: true, name: true } },
+            },
+          },
         },
       },
       payments: { select: { amountPaid: true } },
@@ -233,6 +238,7 @@ export class InvoicesService {
       contractId: inv.contractId,
       tenantName: inv.contract.tenant.businessName,
       roomNumber: inv.contract.room.roomNumber,
+      buildingId: inv.contract.room.building.id,
       buildingName: inv.contract.room.building.name,
       periodMonth: inv.periodMonth,
       netReceivable: money(inv.netReceivable),
@@ -240,6 +246,7 @@ export class InvoicesService {
       balance: inv.netReceivable.sub(paid).toFixed(2),
       dueDate: dateOnly(inv.dueDate),
       status: displayStatus(inv.status, inv.netReceivable, paid, inv.dueDate),
+      generatedAt: inv.generatedAt.toISOString(),
     };
   }
 

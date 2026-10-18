@@ -26,6 +26,8 @@ export class UsersService {
           email: dto.email.toLowerCase(),
           passwordHash,
           role: dto.role,
+          position: dto.position,
+          phone: dto.phone,
         },
       });
       return this.view(u);
@@ -45,7 +47,12 @@ export class UsersService {
     await this.ensure(id);
     const u = await this.prisma.user.update({
       where: { id },
-      data: { name: dto.name, isActive: dto.isActive },
+      data: {
+        name: dto.name,
+        isActive: dto.isActive,
+        position: dto.position,
+        phone: dto.phone,
+      },
     });
     return this.view(u);
   }
@@ -73,6 +80,8 @@ export class UsersService {
       name: u.name,
       email: u.email,
       role: u.role,
+      position: u.position,
+      phone: u.phone,
       isActive: u.isActive,
       lastLoginAt: iso(u.lastLoginAt),
       lockedUntil: iso(u.lockedUntil),

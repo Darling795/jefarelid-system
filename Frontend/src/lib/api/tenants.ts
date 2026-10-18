@@ -3,6 +3,12 @@ import type { ListMeta } from "./types";
 
 export type TenantStatus = "active" | "inactive";
 
+export interface TenantActiveLease {
+  contractId: string;
+  buildingName: string;
+  roomNumbers: string[];
+}
+
 export interface TenantListItem {
   id: string;
   businessName: string;
@@ -12,6 +18,7 @@ export interface TenantListItem {
   tin: string | null;
   status: TenantStatus;
   activeContracts: number;
+  activeLeases: TenantActiveLease[];
 }
 
 export interface TenantContractRow {
@@ -62,10 +69,17 @@ export interface TenantInput {
 
 export async function listTenants(
   search?: string,
+  status?: TenantStatus | "all",
 ): Promise<{ data: TenantListItem[]; meta: ListMeta }> {
   const res = await apiClient.get<{ data: TenantListItem[]; meta: ListMeta }>(
     "/tenants",
-    { params: { search: search || undefined, pageSize: 100 } },
+    {
+      params: {
+        search: search || undefined,
+        status: status && status !== "all" ? status : undefined,
+        pageSize: 100,
+      },
+    },
   );
   return res.data;
 }
@@ -95,6 +109,38 @@ export async function deleteTenant(id: string): Promise<void> {
 export async function getTenantPayments(id: string): Promise<TenantPayment[]> {
   const res = await apiClient.get<{ data: TenantPayment[] }>(
     `/tenants/${id}/payments`,
+  );
+  return res.data.data;
+}
+
+export interface TenantCredit {
+  id: string;
+  amount: string;
+  remaining: string;
+  sourceInvoiceId: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface TenantCredits {
+  totalRemaining: string;
+  credits: TenantCredit[];
+}
+
+export async function getTenantCredits(id: string): Promise<TenantCredits> {
+  const res = await apiClient.get<{ data: TenantCredits }>(
+    `/tenants/${id}/credits`,
+  );
+  return res.data.data;
+}
+
+export async function applyTenantCredit(
+  id: string,
+  input: { invoiceId: string; amount: string },
+): Promise<TenantCredits> {
+  const res = await apiClient.post<{ data: TenantCredits }>(
+    `/tenants/${id}/credits/apply`,
+    input,
   );
   return res.data.data;
 }

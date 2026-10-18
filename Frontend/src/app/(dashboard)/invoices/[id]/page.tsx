@@ -10,7 +10,7 @@ import { ArrowLeft, Ban, LoaderCircle, Plus, Printer } from "lucide-react";
 import { getInvoice, voidInvoice } from "@/lib/api/invoices";
 import { createPayment } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/types";
-import { formatDate, formatPHP, formatPeriod } from "@/lib/format";
+import { formatDate, formatDateTime, formatPHP, formatPeriod } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { PrintableInvoice } from "@/components/invoices/printable-invoice";
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,8 +67,14 @@ export default function InvoiceDetailPage() {
         paymentMethod: pay.paymentMethod || undefined,
         remarks: pay.remarks || undefined,
       }),
-    onSuccess: async () => {
-      toast.success("Payment recorded.");
+    onSuccess: async (result) => {
+      if (result.advanceCredit) {
+        toast.success(
+          `Payment recorded. ₱${result.appliedAmount} applied; ₱${result.advanceCredit} saved as advance credit.`,
+        );
+      } else {
+        toast.success("Payment recorded.");
+      }
       setPayOpen(false);
       setPay({ amountPaid: "", paymentDate: "", orNumber: "", paymentMethod: "cash", remarks: "" });
       await refresh();
@@ -76,7 +83,7 @@ export default function InvoiceDetailPage() {
     onError: (e) => {
       const code = e instanceof ApiError ? e.code : "";
       const msg =
-        code === "OVERPAYMENT" ? "Payment exceeds the outstanding balance."
+        code === "OVERPAYMENT" ? "This invoice is already fully paid."
         : code === "DUPLICATE_OR_NUMBER" ? "That OR number is already used."
         : code === "INVOICE_VOIDED" ? "This invoice is voided."
         : "Could not record payment.";
@@ -151,6 +158,9 @@ export default function InvoiceDetailPage() {
                 <Row label="Amount paid" value={formatPHP(data.amountPaid)} />
                 <div className="my-1 border-t" />
                 <Row label="Balance" value={formatPHP(data.balance)} strong />
+                <div className="mt-2 border-t pt-2">
+                  <Row label="Generated" value={formatDateTime(data.generatedAt)} />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -186,7 +196,13 @@ export default function InvoiceDetailPage() {
           <Dialog open={payOpen} onOpenChange={setPayOpen}>
             <DialogContent>
               <form onSubmit={(e) => { e.preventDefault(); recordPayment.mutate(); }}>
-                <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
+                <DialogHeader>
+                  <DialogTitle>Record payment</DialogTitle>
+                  <DialogDescription>
+                    Balance due {formatPHP(data.balance)}. Paying more applies the
+                    balance and saves the excess as the tenant&rsquo;s advance credit.
+                  </DialogDescription>
+                </DialogHeader>
                 <div className="grid grid-cols-2 gap-4 py-4">
                   <div className="flex flex-col gap-2">
                     <Label>Amount (PHP)</Label>

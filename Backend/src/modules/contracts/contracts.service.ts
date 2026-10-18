@@ -21,13 +21,32 @@ function toDate(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);
 }
 
-/** Derived status: an active contract within 90 days of expiry shows "expiring". */
+/**
+ * Derived status for display (item 9 — accurate dates):
+ *  • an active contract past its end date shows "expired"
+ *  • an active contract within 90 days of expiry shows "expiring"
+ * The stored status is unchanged; this only corrects what staff see.
+ */
 function effectiveStatus(status: string, endDate: Date): string {
   if (status === 'active') {
     const days = (endDate.getTime() - Date.now()) / DAY;
-    if (days >= 0 && days <= EXPIRING_DAYS) return 'expiring';
+    if (days < 0) return 'expired';
+    if (days <= EXPIRING_DAYS) return 'expiring';
   }
   return status;
+}
+
+/**
+ * Whole-month lease duration, inclusive of both endpoints (item 10). A lease
+ * running the 1st of one month to the last day of another counts both months,
+ * so Jan 2025 → Dec 2027 is 36 months. Clamped to at least 1.
+ */
+function durationMonths(start: Date, end: Date): number {
+  const months =
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    (end.getUTCMonth() - start.getUTCMonth()) +
+    1;
+  return Math.max(1, months);
 }
 
 @Injectable()
@@ -85,6 +104,7 @@ export class ContractsService {
         buildingName: c.room.building.name,
         startDate: dateOnly(c.startDate),
         endDate: dateOnly(c.endDate),
+        durationMonths: durationMonths(c.startDate, c.endDate),
         basicRent: money(c.basicRent),
         status: effectiveStatus(c.status, c.endDate),
         rawStatus: c.status,
@@ -156,7 +176,7 @@ export class ContractsService {
       const setting = await this.prisma.setting.findUnique({
         where: { key: 'default_escalation_rate' },
       });
-      escalationRate = setting?.value ?? '0.05';
+      escalationRate = setting?.value ?? '0';
     }
 
     const contract = await this.prisma.contract.create({
@@ -252,6 +272,7 @@ export class ContractsService {
       rooms,
       startDate: dateOnly(c.startDate),
       endDate: dateOnly(c.endDate),
+      durationMonths: durationMonths(c.startDate, c.endDate),
       basicRent: money(c.basicRent),
       escalationRate: rate(c.escalationRate),
       escalationAnchorDate: dateOnly(c.escalationAnchorDate),

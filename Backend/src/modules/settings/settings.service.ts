@@ -37,7 +37,7 @@ export class SettingsService {
     return {
       vatRate: map.vat_rate ?? '0.12',
       whtRate: map.wht_rate ?? '0.05',
-      defaultEscalationRate: map.default_escalation_rate ?? '0.05',
+      defaultEscalationRate: map.default_escalation_rate ?? '0',
     };
   }
 

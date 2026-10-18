@@ -44,6 +44,30 @@ export function formatArea(sqm: string | number | null | undefined): string {
   return `${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} sq.m.`;
 }
 
+/**
+ * Date WITH time, `DD MMM YYYY · HH:mm` (e.g. 05 Mar 2026 · 14:30), in local
+ * time. Used where the panel asked for timestamps (audit trail, invoice records).
+ */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return "—";
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const hh = String(dt.getHours()).padStart(2, "0");
+  const mm = String(dt.getMinutes()).padStart(2, "0");
+  return `${dd} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()} · ${hh}:${mm}`;
+}
+
+/**
+ * Display label for a role. Per the client panel, the owner account shows as
+ * "Admin" and the secretarial staff accounts show as "Secretary". The stored
+ * role values (`super_admin` / `admin`) and all server-side authorization are
+ * unchanged — this is presentation only.
+ */
+export function roleLabel(role: "super_admin" | "admin"): string {
+  return role === "super_admin" ? "Admin" : "Secretary";
+}
+
 /** Month identifier `YYYY-MM` → `MMM YYYY` (e.g. Mar 2026). */
 export function formatPeriod(period: string | null | undefined): string {
   if (!period) return "—";

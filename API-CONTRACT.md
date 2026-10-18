@@ -73,12 +73,15 @@ Login errors: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `ACCOUNT_INACTIVE`.
 ## Users — Super Admin only
 
 ```
-GET    /users                → list
-POST   /users                { name, email, password, role }
-PATCH  /users/:id            { name, isActive }
+GET    /users                → list (each: id, name, email, role, position, phone, …)
+POST   /users                { name, email, password, role, position?, phone? }
+PATCH  /users/:id            { name?, isActive?, position?, phone? }
 POST   /users/:id/reset-password  { newPassword }
 POST   /users/:id/unlock     → 204
 ```
+
+Role values stay `super_admin` / `admin`; the UI labels them **Admin** (owner) and
+**Secretary** (staff). `position` and `phone` are the profile fields (item 7).
 
 ---
 
@@ -102,6 +105,10 @@ DELETE /buildings/:id        → 409 BUILDING_HAS_ROOMS if it still has rooms;
 ```
 GET    /buildings/:buildingId/rooms   → list
 POST   /buildings/:buildingId/rooms   { roomNumber, floor, areaSqm, baseRate }
+GET    /rooms/vacant                  → vacant units portfolio-wide, with prices;
+                                        filters: buildingId; sortBy=baseRate|buildingName|roomNumber,
+                                        sortDir=asc|desc (default buildingName asc).
+                                        Vacant = active room with no active contract.
 GET    /rooms/:id                     → room with currentContract and tenant
 PATCH  /rooms/:id
 DELETE /rooms/:id                     → removes the room if it never billed
@@ -113,6 +120,8 @@ DELETE /rooms/:id                     → removes the room if it never billed
 ```
 
 Room list item includes: `{ id, roomNumber, floor, areaSqm, baseRate, status, currentTenantName, contractEndDate }`
+
+Vacant item includes: `{ id, roomNumber, floor, areaSqm, baseRate, status, buildingId, buildingName }`
 
 ---
 
@@ -135,11 +144,18 @@ metadata: `{ id, label, category, fileName, mimeType, sizeBytes, uploadedAt }`.
 ## Tenants
 
 ```
-GET    /tenants              → list
+GET    /tenants              → list; filters: search, status (active|inactive).
+                               Each item includes activeLeases[] = { contractId,
+                               buildingName, roomNumbers[] } (item 6).
 POST   /tenants              { businessName, contactPerson, contactNumber, email, tin, address }
 GET    /tenants/:id          → tenant with contracts, outstandingBalance
 PATCH  /tenants/:id
 GET    /tenants/:id/payments → payment history
+GET    /tenants/:id/credits  → { totalRemaining, credits[] } advance credit balance
+POST   /tenants/:id/credits/apply  { invoiceId, amount, paymentDate? } → apply
+                               advance credit to one of the tenant's invoices
+                               (manual; draws oldest-first). Errors:
+                               INSUFFICIENT_CREDIT, OVERPAYMENT, INVOICE_VOIDED.
 DELETE /tenants/:id          → removes the tenant if they never billed
                                (clearing empty draft/terminated contracts); if
                                they have invoice history the tenant is kept and
@@ -152,7 +168,11 @@ DELETE /tenants/:id          → removes the tenant if they never billed
 ## Contracts
 
 ```
-GET    /contracts                  → list; filters: status, buildingId, tenantId, expiringWithinDays
+GET    /contracts                  → list; filters: status, buildingId, tenantId, expiringWithinDays.
+                                     List items and detail include durationMonths
+                                     (whole months, inclusive — item 10). An active
+                                     contract past its end date reads as "expired",
+                                     and within 90 days of expiry as "expiring".
 POST   /contracts                  → create
 GET    /contracts/:id              → contract with tenant, room, invoices
 PATCH  /contracts/:id              → editable fields only; not while active without reason
@@ -237,6 +257,12 @@ GET    /payments/outstanding       → filters: tenantId, buildingId; aged bucke
 
 Errors: `OVERPAYMENT`, `INVOICE_VOIDED`, `DUPLICATE_OR_NUMBER`.
 
+**Overpayment → advance credit (item 5.2).** A payment greater than the invoice
+balance is **not** rejected: the balance is applied to the invoice and the excess
+is stored as a tenant advance credit (see `/tenants/:id/credits`). The response
+adds `{ appliedAmount, advanceCredit }`. `OVERPAYMENT` is now returned only when
+recording a payment against an already fully-paid invoice.
+
 **Outstanding shape:**
 
 ```json
@@ -308,7 +334,9 @@ GET    /audit-logs   → filters: userId, entityType, action, dateFrom, dateTo
 GET    /audit-logs/:id → full before/after JSON
 ```
 
-Read-only. There is no POST, PATCH, or DELETE on this resource.
+Read-only. There is no POST, PATCH, or DELETE on this resource. `action` is one
+of `create | update | delete | login | logout`; login/logout rows (entityType
+`auth`) record every account's sign-in/out with date and time (items 8.2–8.3).
 
 ---
 

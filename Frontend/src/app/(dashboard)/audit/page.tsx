@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 
 import { getAuditLog, listAuditLogs, type AuditLogItem } from "@/lib/api/audit";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -30,7 +37,18 @@ const ACTION_TONE: Record<string, string> = {
   create: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   update: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
   delete: "bg-destructive/10 text-destructive",
+  login: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  logout: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
 };
+
+const ACTION_ITEMS = [
+  { value: "all", label: "All actions" },
+  { value: "create", label: "Create" },
+  { value: "update", label: "Update" },
+  { value: "delete", label: "Delete" },
+  { value: "login", label: "Login" },
+  { value: "logout", label: "Logout" },
+];
 
 function formatIp(ip: string | null | undefined): string {
   if (!ip) return "—";
@@ -112,11 +130,16 @@ function AuditDiff({
 
 export default function AuditPage() {
   const [entityType, setEntityType] = useState("");
+  const [action, setAction] = useState("all");
   const [selected, setSelected] = useState<AuditLogItem | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["audit", entityType],
-    queryFn: () => listAuditLogs(entityType ? { entityType } : {}),
+    queryKey: ["audit", entityType, action],
+    queryFn: () =>
+      listAuditLogs({
+        entityType: entityType || undefined,
+        action: action === "all" ? undefined : action,
+      }),
   });
   const detail = useQuery({
     queryKey: ["audit", selected?.id],
@@ -126,14 +149,26 @@ export default function AuditPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="Audit trail" description="Every create, update, and delete across the system." />
+      <PageHeader
+        title="Audit trail"
+        description="Every create, update, and delete — plus logins and logouts — across the system, with date and time."
+      />
 
-      <div className="mb-4 max-w-xs">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Input
+          className="max-w-xs"
           placeholder="Filter by entity (e.g. Contract)"
           value={entityType}
           onChange={(e) => setEntityType(e.target.value)}
         />
+        <Select value={action} onValueChange={(v) => setAction(v ?? "all")} items={ACTION_ITEMS}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {ACTION_ITEMS.map((it) => (
+              <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card className="p-0">
@@ -157,13 +192,20 @@ export default function AuditPage() {
             )}
             {data?.data.map((log) => (
               <TableRow key={log.id} className="cursor-pointer" onClick={() => setSelected(log)}>
-                <TableCell className="whitespace-nowrap">{formatDate(log.createdAt)}</TableCell>
+                <TableCell className="whitespace-nowrap">{formatDateTime(log.createdAt)}</TableCell>
                 <TableCell>{log.user?.name ?? "—"}</TableCell>
                 <TableCell>
                   <Badge className={ACTION_TONE[log.action] ?? ""}>{log.action}</Badge>
                 </TableCell>
                 <TableCell>
-                  {log.entityType} <span className="text-muted-foreground">#{log.entityId.slice(-6)}</span>
+                  {log.entityType === "auth" ? (
+                    <span className="text-muted-foreground">Session</span>
+                  ) : (
+                    <>
+                      {log.entityType}{" "}
+                      <span className="text-muted-foreground">#{log.entityId.slice(-6)}</span>
+                    </>
+                  )}
                 </TableCell>
                 <TableCell className="tabular-nums text-muted-foreground">{formatIp(log.ipAddress)}</TableCell>
               </TableRow>
@@ -185,7 +227,7 @@ export default function AuditPage() {
             </DialogTitle>
             {selected && (
               <p className="text-sm text-muted-foreground">
-                {selected.user?.name ?? "System"} · {formatDate(selected.createdAt)}
+                {selected.user?.name ?? "System"} · {formatDateTime(selected.createdAt)}
                 {selected.ipAddress ? ` · ${formatIp(selected.ipAddress)}` : ""}
               </p>
             )}

@@ -110,8 +110,13 @@ export function RoomFormDialog({
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="r-floor">Floor</Label>
-              <Input id="r-floor" value={floor} onChange={(e) => setFloor(e.target.value)} />
+              <Label htmlFor="r-floor">Floor / level</Label>
+              <Input
+                id="r-floor"
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                placeholder="e.g. G, 2, 3, Mezzanine"
+              />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="r-area">Area (sqm)</Label>

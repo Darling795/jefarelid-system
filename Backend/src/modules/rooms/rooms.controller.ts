@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { RoomsService } from './rooms.service';
@@ -24,6 +25,16 @@ export class RoomsController {
   @Post('buildings/:buildingId/rooms')
   create(@Param('buildingId') buildingId: string, @Body() dto: CreateRoomDto) {
     return this.rooms.create(buildingId, dto);
+  }
+
+  // Must precede `rooms/:id` so the static path is not captured as an id.
+  @Get('rooms/vacant')
+  listVacant(
+    @Query('buildingId') buildingId?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+  ) {
+    return this.rooms.listVacant({ buildingId, sortBy, sortDir });
   }
 
   @Get('rooms/:id')

@@ -56,6 +56,8 @@ enum AuditAction {
   create
   update
   delete
+  login
+  logout
 }
 
 // ── Buildings & rooms ────────────────────────────────────────────────────
@@ -107,8 +109,30 @@ model Tenant {
 
   contracts Contract[]
   documents Document[]
+  credits   TenantCredit[]
 
   @@map("tenants")
+}
+
+// Advance payment / credit balance for a tenant (SPEC panel item 5.2). When a
+// rent payment exceeds the invoice's net receivable, the applied portion stays
+// on the invoice and the EXCESS is captured here as a credit — so the cash is
+// never counted twice. `remaining` is drawn down as staff apply the credit to
+// future invoices manually (owner's policy: no auto-apply).
+model TenantCredit {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  amount          Decimal  @db.Decimal(14, 2)
+  remaining       Decimal  @db.Decimal(14, 2)
+  sourceInvoiceId String?  @map("source_invoice_id")
+  note            String?
+  recordedById    String?  @map("recorded_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("tenant_credits")
 }
 
 // ── Contracts ────────────────────────────────────────────────────────────
@@ -277,6 +301,8 @@ model User {
   email            String    @unique
   passwordHash     String    @map("password_hash")
   role             UserRole
+  position         String?
+  phone            String?
   isActive         Boolean   @default(true) @map("is_active")
   lastLoginAt      DateTime? @map("last_login_at")
   failedLoginCount Int       @default(0) @map("failed_login_count")

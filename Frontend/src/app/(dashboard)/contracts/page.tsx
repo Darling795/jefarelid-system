@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileText, Plus } from "lucide-react";
 
 import { listContracts } from "@/lib/api/contracts";
+import { listBuildings } from "@/lib/api/buildings";
 import { formatDate, formatPHP } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -37,10 +38,21 @@ const STATUS_ITEMS = STATUSES.map((s) => ({
 
 export default function ContractsPage() {
   const [status, setStatus] = useState("all");
+  const [buildingId, setBuildingId] = useState("all");
+  const buildings = useQuery({ queryKey: ["buildings"], queryFn: listBuildings });
   const { data, isLoading } = useQuery({
-    queryKey: ["contracts", status],
-    queryFn: () => listContracts(status === "all" ? {} : { status }),
+    queryKey: ["contracts", status, buildingId],
+    queryFn: () =>
+      listContracts({
+        status: status === "all" ? undefined : status,
+        buildingId: buildingId === "all" ? undefined : buildingId,
+      }),
   });
+
+  const buildingItems = [
+    { value: "all", label: "All buildings" },
+    ...(buildings.data ?? []).map((b) => ({ value: b.id, label: b.name })),
+  ];
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -54,15 +66,27 @@ export default function ContractsPage() {
         }
       />
 
-      <div className="mb-4 w-48">
+      <div className="mb-4 flex flex-wrap gap-3">
         <Select value={status} onValueChange={(v) => setStatus(v ?? "all")} items={STATUS_ITEMS}>
-          <SelectTrigger>
+          <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {STATUS_ITEMS.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={buildingId} onValueChange={(v) => setBuildingId(v ?? "all")} items={buildingItems}>
+          <SelectTrigger className="w-52">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {buildingItems.map((b) => (
+              <SelectItem key={b.value} value={b.value}>
+                {b.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -76,6 +100,7 @@ export default function ContractsPage() {
               <TableHead>Tenant</TableHead>
               <TableHead>Building · Room</TableHead>
               <TableHead>Period</TableHead>
+              <TableHead className="text-right">Duration</TableHead>
               <TableHead className="text-right">Basic rent</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -84,14 +109,14 @@ export default function ContractsPage() {
             {isLoading &&
               Array.from({ length: 3 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))}
             {data?.data.length === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="p-0">
+                <TableCell colSpan={6} className="p-0">
                   <EmptyState
                     icon={FileText}
                     title={status === "all" ? "No contracts yet" : `No ${status} contracts`}
@@ -117,6 +142,9 @@ export default function ContractsPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(c.startDate)} – {formatDate(c.endDate)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {c.durationMonths} mo
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPHP(c.basicRent)}</TableCell>
                 <TableCell>

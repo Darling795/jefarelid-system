@@ -7,8 +7,8 @@ export class AuditQueryDto {
   @IsOptional() @IsString() entityType?: string;
 
   @IsOptional()
-  @IsIn(['create', 'update', 'delete'])
-  action?: 'create' | 'update' | 'delete';
+  @IsIn(['create', 'update', 'delete', 'login', 'logout'])
+  action?: 'create' | 'update' | 'delete' | 'login' | 'logout';
 
   @IsOptional() @IsString() dateFrom?: string;
   @IsOptional() @IsString() dateTo?: string;

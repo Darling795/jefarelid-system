@@ -6,6 +6,7 @@ export interface InvoiceListItem {
   contractId: string;
   tenantName: string;
   roomNumber: string;
+  buildingId: string;
   buildingName: string;
   periodMonth: string;
   netReceivable: string;
@@ -13,6 +14,7 @@ export interface InvoiceListItem {
   balance: string;
   dueDate: string;
   status: string;
+  generatedAt: string;
 }
 
 export interface InvoicePaymentRow {

@@ -6,6 +6,8 @@ export interface UserItem {
   name: string;
   email: string;
   role: Role;
+  position: string | null;
+  phone: string | null;
   isActive: boolean;
   lastLoginAt: string | null;
   lockedUntil: string | null;
@@ -21,6 +23,8 @@ export async function createUser(input: {
   email: string;
   password: string;
   role: Role;
+  position?: string;
+  phone?: string;
 }): Promise<UserItem> {
   const res = await apiClient.post("/users", input);
   return res.data.data;
@@ -28,7 +32,7 @@ export async function createUser(input: {
 
 export async function updateUser(
   id: string,
-  input: { name?: string; isActive?: boolean },
+  input: { name?: string; isActive?: boolean; position?: string; phone?: string },
 ): Promise<UserItem> {
   const res = await apiClient.patch(`/users/${id}`, input);
   return res.data.data;

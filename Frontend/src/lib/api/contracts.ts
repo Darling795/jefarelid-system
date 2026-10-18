@@ -8,6 +8,7 @@ export interface ContractListItem {
   buildingName: string;
   startDate: string;
   endDate: string;
+  durationMonths: number;
   basicRent: string;
   status: string;
   rawStatus: string;
@@ -34,6 +35,7 @@ export interface ContractDetail {
   rooms: ContractRoomRef[];
   startDate: string;
   endDate: string;
+  durationMonths: number;
   basicRent: string;
   escalationRate: string;
   escalationAnchorDate: string;

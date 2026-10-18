@@ -149,6 +149,66 @@ All are marked `TODO: confirm with client` in code and behind settings/constants
 
 ---
 
+## 7a. Panel revisions (post-review, Oct 2026)
+
+Client panel review produced 25 requested modifications, being applied in six
+module batches (each reviewed before the next). Decisions confirmed with the
+owner: advance credit = record excess as a tenant credit, applied to future
+invoices **manually** (no auto-apply); role labels = owner shows as **"Admin"**,
+staff as **"Secretary"** (display only — the `super_admin`/`admin` enum and all
+guards are unchanged); escalation = keep the engine but default to **0%** so the
+base rate never increases unless a rate is deliberately set per lease.
+
+| Batch | Scope | Status |
+|---|---|---|
+| A | Buildings: complete name/address, floor/level, **vacant-units view** (prices, building filter, price/building sort), building-list sorting | ✅ Done |
+| B | Tenants: direct contract access, building+room shown, secretary profile fields, sort/filter | ✅ Done |
+| C | Contracts: data/date-range accuracy, duration in months | ✅ Done |
+| D | Invoices: generate-all grouped by building, group/sort by building, clickable rows, cleaner layout, timestamps, sort/filter | ✅ Done |
+| E | Billing: escalation default 0% + advance credit | ✅ Done |
+| F | Audit/accounts/UI: audit timestamps, login/logout events (all accounts), Admin/Secretary labels, price sorting, filtering/search, nav consistency | ✅ Done |
+
+### Batches B–F notes
+- **Schema migration `panel_revisions`** — adds `User.position` + `User.phone`
+  (secretary profile), the `tenant_credits` table (advance credit ledger), and
+  `login`/`logout` to the `AuditAction` enum. Non-destructive. **Reseed applied.**
+- **B — Tenants.** List now returns `activeLeases[]` (building + room) and filters
+  by `status`; sortable columns; the Units cell links straight to each contract.
+  Secretary accounts carry a position/phone profile (Users page + create form).
+- **C — Contracts.** `durationMonths` on list + detail; an active lease past its
+  end date now reads "expired" (display only — stored status unchanged).
+- **D — Invoices.** List groups by building (alphabetical) with a flat "All
+  invoices" toggle; filters by building/status/period; sortable; tenant name and
+  period are clickable; `generatedAt` timestamp shown on list + detail.
+- **E — Billing.** Default escalation rate now **0** (seed settings + seed
+  contracts + service fallback); the engine is intact for leases that set a rate.
+  Advance credit: overpayment applies the balance and banks the excess as a
+  `tenant_credits` row; staff apply it to a future invoice from the tenant page
+  (credit-funded payment uses method `advance_credit` so cash reports can exclude
+  it). No double-count. `OVERPAYMENT` now only fires on an already-paid invoice.
+- **F — Audit/accounts.** Audit trail shows date **and time**, has an action
+  filter, and records `login`/`logout` for **every** account (owner + secretaries)
+  via an explicit write in the auth service (the one audited path outside the
+  Prisma extension — auth events have no entity write to hook). Role labels are
+  **Admin** (owner) / **Secretary** (staff), display-only — the `super_admin`/
+  `admin` enum and all guards are unchanged. Contracts gained a building filter.
+- **Verified live:** flat escalation (Mercury base 35,000 → net 37,450, no bump);
+  overpay 40,000 on 37,450 → 37,450 applied + 2,550 credit → applied 2,550 to the
+  Dec invoice (remaining 0, no double-count); login/logout rows for owner **and**
+  secretary with timestamps; tenant list shows building·room. Backend `nest build`
+  + 13 computation tests pass; both sides typecheck clean.
+
+### Batch A notes
+- **Seed bug fixed** — seed created contracts via direct `Contract.roomId` only,
+  never the `ContractRoom` join that room/occupancy views read, so seeded
+  occupied rooms rendered as vacant with no tenant. Seed now upserts a
+  `ContractRoom` per contract. **Reseed (`npm run prisma:seed`) to apply.**
+- New endpoint `GET /rooms/vacant` (API-CONTRACT updated) — vacant = active room
+  with no active contract; returns price + building; `buildingId` filter and
+  `sortBy=baseRate|buildingName|roomNumber` + `sortDir`.
+- Buildings page is now tabbed (**Buildings** | **Vacant units**); the buildings
+  list has sortable Name/Rooms/Occupied headers. Verified end-to-end against seed.
+
 ## 8. Follow-ups before production
 
 - **PDF export** — enabled. `puppeteer` is a dependency (downloads Chromium on install) and `toPdf()` renders the report HTML to A4. Verified end-to-end (`GET /reports/occupancy?format=pdf` → `application/pdf`). If Chromium is ever missing on a host, `format=pdf` still fails gracefully with a clear 501; `xlsx`/`json` are unaffected.

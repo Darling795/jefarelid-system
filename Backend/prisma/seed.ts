@@ -24,7 +24,7 @@ async function main() {
   const settings: Array<{ key: string; value: string; description: string }> = [
     { key: 'vat_rate', value: '0.12', description: 'Value Added Tax rate applied to basic rent.' },
     { key: 'wht_rate', value: '0.05', description: 'Expanded withholding tax rate on rent (base: net of VAT — see SPEC).' },
-    { key: 'default_escalation_rate', value: '0.05', description: 'Default annual rent escalation rate for new contracts.' },
+    { key: 'default_escalation_rate', value: '0', description: 'Default annual rent escalation rate for new contracts (0 = none; rent stays at the agreed rate unless a rate is set per contract).' },
     { key: 'notification_lead_days', value: '90,60,30', description: 'Contract-expiry reminder lead times, in days.' },
     { key: 'invoice_generation_day', value: '1', description: 'Day of month the scheduled invoice job runs.' },
   ];
@@ -37,15 +37,18 @@ async function main() {
   }
 
   // ── Users: 1 super admin + 2 admins ────────────────────────────────────
-  const users: Array<{ id: string; name: string; email: string; role: 'super_admin' | 'admin' }> = [
-    { id: 'usr_owner', name: 'Business Owner', email: 'owner@jefarelid.test', role: 'super_admin' },
-    { id: 'usr_admin_1', name: 'Secretary One', email: 'secretary1@jefarelid.test', role: 'admin' },
-    { id: 'usr_admin_2', name: 'Secretary Two', email: 'secretary2@jefarelid.test', role: 'admin' },
+  const users: Array<{
+    id: string; name: string; email: string; role: 'super_admin' | 'admin';
+    position: string; phone: string;
+  }> = [
+    { id: 'usr_owner', name: 'Business Owner', email: 'owner@jefarelid.test', role: 'super_admin', position: 'Owner / Administrator', phone: '0917-000-0001' },
+    { id: 'usr_admin_1', name: 'Secretary One', email: 'secretary1@jefarelid.test', role: 'admin', position: 'Secretary', phone: '0917-000-0002' },
+    { id: 'usr_admin_2', name: 'Secretary Two', email: 'secretary2@jefarelid.test', role: 'admin', position: 'Secretary', phone: '0917-000-0003' },
   ];
   for (const u of users) {
     await prisma.user.upsert({
       where: { id: u.id },
-      update: { name: u.name, email: u.email, role: u.role, isActive: true },
+      update: { name: u.name, email: u.email, role: u.role, position: u.position, phone: u.phone, isActive: true },
       create: { ...u, passwordHash, isActive: true },
     });
   }
@@ -109,16 +112,24 @@ async function main() {
       where: { id: c.id },
       update: {
         tenantId: c.tenantId, roomId: c.roomId, startDate: d(c.startDate), endDate: d(c.endDate),
-        basicRent: c.basicRent, escalationRate: '0.05', escalationAnchorDate: d(c.startDate),
+        basicRent: c.basicRent, escalationRate: '0', escalationAnchorDate: d(c.startDate),
         securityDeposit: c.securityDeposit, advancePayment: c.advancePayment, paymentDueDay: c.paymentDueDay,
         status: 'active',
       },
       create: {
         id: c.id, tenantId: c.tenantId, roomId: c.roomId, startDate: d(c.startDate), endDate: d(c.endDate),
-        basicRent: c.basicRent, escalationRate: '0.05', escalationAnchorDate: d(c.startDate),
+        basicRent: c.basicRent, escalationRate: '0', escalationAnchorDate: d(c.startDate),
         securityDeposit: c.securityDeposit, advancePayment: c.advancePayment, paymentDueDay: c.paymentDueDay,
         status: 'active',
       },
+    });
+    // The ContractRoom join is the source of truth for a lease's room set
+    // (room/occupancy views read it). Real contracts create these via the
+    // service; seed data must create them too or seeded rooms look vacant.
+    await prisma.contractRoom.upsert({
+      where: { contractId_roomId: { contractId: c.id, roomId: c.roomId } },
+      update: {},
+      create: { contractId: c.id, roomId: c.roomId },
     });
   }
 

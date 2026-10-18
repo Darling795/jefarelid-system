@@ -14,11 +14,15 @@ export class CreateUserDto {
   @IsEmail() email!: string;
   @IsString() @MinLength(8) password!: string;
   @IsEnum(UserRole) role!: UserRole;
+  @IsOptional() @IsString() position?: string;
+  @IsOptional() @IsString() phone?: string;
 }
 
 export class UpdateUserDto {
   @IsOptional() @IsString() @IsNotEmpty() name?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() position?: string;
+  @IsOptional() @IsString() phone?: string;
 }
 
 export class ResetPasswordDto {

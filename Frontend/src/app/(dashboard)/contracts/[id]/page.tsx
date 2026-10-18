@@ -194,6 +194,7 @@ export default function ContractDetailPage() {
                 </div>
                 <Field label="Start" value={formatDate(data.startDate)} />
                 <Field label="End" value={formatDate(data.endDate)} />
+                <Field label="Duration" value={`${data.durationMonths} months`} />
                 <Field label="Basic rent" value={formatPHP(data.basicRent)} />
                 <Field label="Escalation" value={`${(Number(data.escalationRate) * 100).toFixed(2)}%`} />
                 <Field label="Anchor date" value={formatDate(data.escalationAnchorDate)} />

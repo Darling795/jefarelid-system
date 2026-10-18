@@ -14,7 +14,7 @@ import {
   type UserItem,
 } from "@/lib/api/users";
 import { ApiError, type Role } from "@/lib/api/types";
-import { formatDate } from "@/lib/format";
+import { formatDate, roleLabel } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +50,14 @@ export default function UsersPage() {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetFor, setResetFor] = useState<UserItem | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "admin" as Role });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "admin" as Role,
+    position: "",
+    phone: "",
+  });
   const [newPassword, setNewPassword] = useState("");
 
   const { data, isLoading } = useQuery({ queryKey: ["users"], queryFn: listUsers });
@@ -61,7 +68,7 @@ export default function UsersPage() {
     onSuccess: async () => {
       toast.success("User created.");
       setCreateOpen(false);
-      setForm({ name: "", email: "", password: "", role: "admin" });
+      setForm({ name: "", email: "", password: "", role: "admin", position: "", phone: "" });
       await invalidate();
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not create user."),
@@ -87,7 +94,7 @@ export default function UsersPage() {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Users"
-        description="Staff accounts. 1 Super Admin, up to 2 Admins."
+        description="Staff accounts. 1 Admin (owner), up to 2 Secretaries."
         action={<Button onClick={() => setCreateOpen(true)}><Plus /> New user</Button>}
       />
 
@@ -96,6 +103,7 @@ export default function UsersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Position</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Last login</TableHead>
@@ -106,16 +114,17 @@ export default function UsersPage() {
           <TableBody>
             {isLoading &&
               Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))}
             {data?.map((u) => {
               const locked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
               return (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{u.position ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{u.role === "super_admin" ? "Super Admin" : "Admin"}</Badge>
+                    <Badge variant="secondary">{roleLabel(u.role)}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(u.lastLoginAt)}</TableCell>
                   <TableCell>
@@ -161,6 +170,23 @@ export default function UsersPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
+                  <Label>Position / title</Label>
+                  <Input
+                    placeholder="e.g. Secretary, Bookkeeper"
+                    value={form.position}
+                    onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Contact number</Label>
+                  <Input
+                    value={form.phone}
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
                   <Label>Password</Label>
                   <Input type="password" minLength={8} required value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
                 </div>
@@ -168,16 +194,16 @@ export default function UsersPage() {
                   <Label>Role</Label>
                   <Select
                     value={form.role}
-                    onValueChange={(v) => setForm((f) => ({ ...f, role: v as Role }))}
+                    onValueChange={(v) => setForm((f) => ({ ...f, role: (v as Role) ?? "admin" }))}
                     items={[
-                      { value: "admin", label: "Admin" },
-                      { value: "super_admin", label: "Super Admin" },
+                      { value: "admin", label: "Secretary" },
+                      { value: "super_admin", label: "Admin" },
                     ]}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="admin">Secretary</SelectItem>
+                      <SelectItem value="super_admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

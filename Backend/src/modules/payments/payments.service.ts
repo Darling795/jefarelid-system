@@ -18,7 +18,10 @@ export class PaymentsService {
   async create(dto: CreatePaymentDto, userId: string) {
     const invoice = await this.prisma.rentalInvoice.findUnique({
       where: { id: dto.invoiceId },
-      include: { payments: true },
+      include: {
+        payments: true,
+        contract: { select: { tenantId: true } },
+      },
     });
     if (!invoice) {
       throw new AppException(
@@ -52,29 +55,63 @@ export class PaymentsService {
     const paid = sumPaid(invoice.payments);
     const balance = invoice.netReceivable.sub(paid);
     const amount = new Prisma.Decimal(dto.amountPaid);
-    if (amount.greaterThan(balance)) {
+
+    // A settled invoice takes no further payment (use the tenant's advance
+    // credit instead). Guarded so overpayment capture below never goes negative.
+    if (balance.lessThanOrEqualTo(0)) {
       throw new AppException(
         ApiCode.OVERPAYMENT,
-        'Payment exceeds the outstanding balance.',
+        'This invoice is already fully paid.',
         HttpStatus.CONFLICT,
         { balance: balance.toFixed(2) },
       );
     }
 
+    // SPEC panel 5.2: overpayment is NOT rejected. Apply up to the balance and
+    // capture the excess as a tenant advance credit. The cash is split, never
+    // doubled — the invoice gets `applied`, the credit gets `excess`.
+    const applied = amount.greaterThan(balance) ? balance : amount;
+    const excess = amount.sub(applied);
+
     const payment = await this.prisma.rentalPayment.create({
       data: {
         invoiceId: dto.invoiceId,
-        amountPaid: dto.amountPaid,
+        amountPaid: applied.toFixed(2),
         paymentDate: new Date(`${dto.paymentDate}T00:00:00.000Z`),
         orNumber: dto.orNumber,
         paymentMethod: dto.paymentMethod,
-        remarks: dto.remarks,
+        remarks:
+          excess.greaterThan(0)
+            ? [dto.remarks, `₱${amount.toFixed(2)} received; ₱${excess.toFixed(2)} to advance credit`]
+                .filter(Boolean)
+                .join(' — ')
+            : dto.remarks,
         recordedById: userId,
       },
     });
 
+    if (excess.greaterThan(0)) {
+      await this.prisma.tenantCredit.create({
+        data: {
+          tenantId: invoice.contract.tenantId,
+          amount: excess.toFixed(2),
+          remaining: excess.toFixed(2),
+          sourceInvoiceId: invoice.id,
+          note: `Excess from payment for ${invoice.periodMonth}${
+            dto.orNumber ? ` (OR ${dto.orNumber})` : ''
+          }`,
+          recordedById: userId,
+        },
+      });
+    }
+
     await this.refreshInvoiceStatus(dto.invoiceId);
-    return this.findOne(payment.id);
+    const view = await this.findOne(payment.id);
+    return {
+      ...view,
+      appliedAmount: applied.toFixed(2),
+      advanceCredit: excess.greaterThan(0) ? excess.toFixed(2) : null,
+    };
   }
 
   async list(query: {

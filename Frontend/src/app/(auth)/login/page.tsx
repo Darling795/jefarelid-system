@@ -29,7 +29,7 @@ function messageForCode(err: unknown): string {
       case "ACCOUNT_LOCKED":
         return "Account temporarily locked after too many failed attempts. Try again later.";
       case "ACCOUNT_INACTIVE":
-        return "This account is inactive. Contact the Super Admin.";
+        return "This account is inactive. Contact the Admin.";
       default:
         return err.message;
     }
@@ -193,7 +193,7 @@ export default function LoginPage() {
           </Card>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Staff access only. Contact your Super Admin for an account.
+            Staff access only. Contact your Admin for an account.
           </p>
         </div>
       </div>

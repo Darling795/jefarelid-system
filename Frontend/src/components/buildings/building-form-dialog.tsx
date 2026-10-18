@@ -106,8 +106,10 @@ export function BuildingFormDialog({
               <Label htmlFor="b-address">Address</Label>
               <Input
                 id="b-address"
+                required
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                placeholder="Street, barangay, city"
               />
             </div>
             <div className="flex flex-col gap-2">
