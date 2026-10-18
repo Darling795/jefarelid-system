@@ -44,9 +44,16 @@ async function bootstrap() {
   // stays lax/insecure so http://localhost works.
   const cookieSecure = process.env.COOKIE_SECURE === 'true';
 
-  // Session-based auth, stored in Postgres (SPEC section 4).
+  // Session-based auth, stored in Postgres (SPEC section 4). External managed
+  // databases (Neon/Supabase/etc.) require SSL; enable it for the session pool
+  // when the URL asks for it. Railway's own internal DB needs no SSL.
+  const dbUrl = process.env.DATABASE_URL;
+  const needsSsl = !!dbUrl && /sslmode=require|neon\.tech|supabase|render\.com/.test(dbUrl);
   const PgStore = connectPgSimple(session);
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({
+    connectionString: dbUrl,
+    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+  });
   app.use(
     session({
       store: new PgStore({ pool, createTableIfMissing: false }),
