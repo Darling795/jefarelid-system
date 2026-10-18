@@ -53,6 +53,14 @@ async function main() {
     });
   }
 
+  // Demo business data (buildings/rooms/tenants/contracts) is optional. Set
+  // SEED_DEMO=false to seed ONLY the users + settings — a clean slate for
+  // entering real data, with no demo rows to delete. Users + settings always
+  // seed so login and tax rates work.
+  const seedDemo = process.env.SEED_DEMO !== 'false';
+  const counts = { buildings: 0, rooms: 0, tenants: 0, contracts: 0 };
+
+  if (seedDemo) {
   // ── Buildings (2) ──────────────────────────────────────────────────────
   const buildings: Array<{ id: string; name: string; address: string }> = [
     { id: 'bld_makati', name: 'JEFARELID Center — Makati', address: '123 Ayala Avenue, Makati City' },
@@ -133,13 +141,20 @@ async function main() {
     });
   }
 
+  counts.buildings = buildings.length;
+  counts.rooms = rooms.length;
+  counts.tenants = tenants.length;
+  counts.contracts = contracts.length;
+  } // end if (seedDemo)
+
   console.log('Seed complete:');
   console.log(`  settings:  ${settings.length}`);
   console.log(`  users:     ${users.length} (1 super admin, 2 admins)`);
-  console.log(`  buildings: ${buildings.length}`);
-  console.log(`  rooms:     ${rooms.length}`);
-  console.log(`  tenants:   ${tenants.length}`);
-  console.log(`  contracts: ${contracts.length} (active)`);
+  console.log(`  buildings: ${counts.buildings}`);
+  console.log(`  rooms:     ${counts.rooms}`);
+  console.log(`  tenants:   ${counts.tenants}`);
+  console.log(`  contracts: ${counts.contracts} (active)`);
+  if (!seedDemo) console.log('  (SEED_DEMO=false — demo business data skipped)');
   console.log(`\n  Login with any seeded email and password: ${DEV_PASSWORD}`);
 }
 

@@ -52,15 +52,8 @@ export default function BuildingDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["buildings"] });
       router.replace("/buildings");
     },
-    onError: (err) => {
-      let msg = "Could not delete building.";
-      if (err instanceof ApiError) {
-        if (err.code === "BUILDING_HAS_ROOMS")
-          msg = "Remove all rooms before deleting this building.";
-        else if (err.code === "BUILDING_HAS_UTILITY_HISTORY")
-          msg = "This building has paid utility bills and cannot be deleted.";
-      }
-      toast.error(msg);
+    onError: () => {
+      toast.error("Could not delete building.");
       setDeleteBuildingOpen(false);
     },
   });
@@ -229,9 +222,14 @@ export default function BuildingDetailPage() {
           <ConfirmDialog
             open={deleteBuildingOpen}
             onOpenChange={setDeleteBuildingOpen}
-            title="Delete building?"
-            description="This permanently removes the building. Only possible when it has no rooms."
-            confirmLabel="Delete"
+            title="Delete this building and all its data?"
+            description={
+              `This permanently deletes ${data.name} and everything under it: ` +
+              `${data.rooms.length} room(s), ${data.contractCount} contract(s), ` +
+              `${data.invoiceCount} invoice(s) and their payments, plus any utility ` +
+              `bills. This cannot be undone.`
+            }
+            confirmLabel="Delete everything"
             destructive
             loading={removeBuilding.isPending}
             onConfirm={() => removeBuilding.mutate()}

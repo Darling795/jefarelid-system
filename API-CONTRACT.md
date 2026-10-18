@@ -92,10 +92,13 @@ GET    /buildings            → list, each with roomCount and occupiedCount
 POST   /buildings            { name, address, notes }
 GET    /buildings/:id        → building with rooms
 PATCH  /buildings/:id
-DELETE /buildings/:id        → 409 BUILDING_HAS_ROOMS if it still has rooms;
-                               409 BUILDING_HAS_UTILITY_HISTORY if it has paid
-                               utility bills. Otherwise removes the building and
-                               clears any unpaid utility bills.
+DELETE /buildings/:id        → deletes the building and ALL its data: rooms,
+                               contracts, invoices, payments, utility bills/
+                               payments, and advance credits tied to those
+                               invoices. Destructive, no undo; the UI confirms
+                               the exact counts first. (`GET /buildings/:id`
+                               returns contractCount + invoiceCount for that
+                               warning.)
 ```
 
 ---

@@ -12,7 +12,9 @@
     "import": "ts-node scripts/import-historical.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "db:buildings": "node scripts/purge-building.mjs --list",
+    "db:purge-building": "node scripts/purge-building.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

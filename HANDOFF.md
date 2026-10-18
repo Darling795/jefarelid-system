@@ -231,6 +231,38 @@ Second round of client/tester feedback, implemented + QA'd (17 live assertions p
   opened its detail. Name/link cells and action buttons `stopPropagation` so
   they still do their own thing (and open-in-new-tab keeps working).
 
+## 7c. Setup / data cleanup (buildings you can't delete)
+
+**Deleting a building now cascades** (owner's request): `DELETE /buildings/:id`
+removes the building and ALL its data — rooms, contracts, invoices, payments,
+utility bills/payments, advance credits — in FK-safe order. The building detail
+confirm dialog spells out the exact counts first (`GET /buildings/:id` returns
+`contractCount` + `invoiceCount`). Destructive, no undo. **Trade-off:** this
+removes frozen invoices that the system previously protected — intended, but note
+the per-row audit of cascaded deletes is not captured (only the building delete
+is). Verified via the live API: a building with an active contract + invoice +
+payment deletes cleanly and seed buildings stay intact.
+
+None of the building data is hardcoded: a fresh database seeds only the two demo
+buildings; anything else was typed in. For bulk/offline cleanup there are also: 
+
+- **Start clean (no demo business data):** `SEED_DEMO=false` seeds ONLY users +
+  settings (so login + tax rates work), no demo buildings/rooms/tenants/contracts:
+  ```bash
+  cd Backend
+  SEED_DEMO=false npx prisma migrate reset --force   # wipes DB, reseeds clean
+  ```
+  Then enter the real buildings. (Windows PowerShell: `$env:SEED_DEMO="false"; npx prisma migrate reset --force`.)
+- **Delete specific buildings, keep the rest** (non-destructive to other data):
+  ```bash
+  cd Backend
+  npm run db:buildings                       # list buildings + ids + counts
+  npm run db:purge-building -- <id> [<id>…]  # delete those + all their data
+  ```
+  `scripts/purge-building.mjs` removes a building and every dependent row
+  (rooms, contracts, invoices, payments, utility bills/payments, advance credits,
+  documents) in FK-safe order, inside a transaction. Destructive, no undo.
+
 ## 8. Follow-ups before production
 
 - **PDF export** — enabled. `puppeteer` is a dependency (downloads Chromium on install) and `toPdf()` renders the report HTML to A4. Verified end-to-end (`GET /reports/occupancy?format=pdf` → `application/pdf`). If Chromium is ever missing on a host, `format=pdf` still fails gracefully with a clear 501; `xlsx`/`json` are unaffected.

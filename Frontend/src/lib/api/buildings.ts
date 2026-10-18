@@ -18,6 +18,8 @@ export interface BuildingDetail {
   createdAt: string;
   updatedAt: string;
   rooms: RoomListItem[];
+  contractCount: number;
+  invoiceCount: number;
 }
 
 export interface BuildingInput {

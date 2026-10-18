@@ -48,7 +48,38 @@ export class BuildingsService {
       include: { rooms: { orderBy: { roomNumber: 'asc' }, include: roomListInclude } },
     });
     if (!b) throw this.notFound();
-    return { ...this.view(b), rooms: b.rooms.map(mapRoomListItem) };
+
+    // What a delete would also remove — surfaced so the UI can warn precisely.
+    const roomIds = b.rooms.map((r) => r.id);
+    const contractCount = roomIds.length
+      ? await this.prisma.contract.count({
+          where: {
+            OR: [
+              { roomId: { in: roomIds } },
+              { rooms: { some: { roomId: { in: roomIds } } } },
+            ],
+          },
+        })
+      : 0;
+    const invoiceCount = roomIds.length
+      ? await this.prisma.rentalInvoice.count({
+          where: {
+            contract: {
+              OR: [
+                { roomId: { in: roomIds } },
+                { rooms: { some: { roomId: { in: roomIds } } } },
+              ],
+            },
+          },
+        })
+      : 0;
+
+    return {
+      ...this.view(b),
+      rooms: b.rooms.map(mapRoomListItem),
+      contractCount,
+      invoiceCount,
+    };
   }
 
   async update(id: string, dto: UpdateBuildingDto) {
@@ -60,35 +91,83 @@ export class BuildingsService {
     return this.view(b);
   }
 
+  /**
+   * Delete a building and EVERYTHING under it — rooms, contracts, invoices,
+   * payments, utility bills/payments, advance credits tied to those invoices,
+   * and (by cascade) contract documents. Per the owner's request a building can
+   * always be removed, even with financial history. This is destructive and has
+   * no undo; the UI confirms what will be deleted. Deletes run in FK-safe order.
+   */
   async remove(id: string): Promise<void> {
     await this.ensureExists(id);
-    const roomCount = await this.prisma.room.count({ where: { buildingId: id } });
-    if (roomCount > 0) {
-      throw new AppException(
-        ApiCode.BUILDING_HAS_ROOMS,
-        'Cannot delete a building that has rooms.',
-        HttpStatus.CONFLICT,
-        { roomCount },
-      );
+
+    const rooms = await this.prisma.room.findMany({
+      where: { buildingId: id },
+      select: { id: true },
+    });
+    const roomIds = rooms.map((r) => r.id);
+
+    // All contracts touching these rooms (primary room or via the join table).
+    const contracts = roomIds.length
+      ? await this.prisma.contract.findMany({
+          where: {
+            OR: [
+              { roomId: { in: roomIds } },
+              { rooms: { some: { roomId: { in: roomIds } } } },
+            ],
+          },
+          select: { id: true },
+        })
+      : [];
+    const contractIds = contracts.map((c) => c.id);
+
+    const invoices = contractIds.length
+      ? await this.prisma.rentalInvoice.findMany({
+          where: { contractId: { in: contractIds } },
+          select: { id: true },
+        })
+      : [];
+    const invoiceIds = invoices.map((i) => i.id);
+
+    if (invoiceIds.length) {
+      await this.prisma.rentalPayment.deleteMany({
+        where: { invoiceId: { in: invoiceIds } },
+      });
+      await this.prisma.tenantCredit.deleteMany({
+        where: { sourceInvoiceId: { in: invoiceIds } },
+      });
+      await this.prisma.rentalInvoice.deleteMany({
+        where: { id: { in: invoiceIds } },
+      });
+    }
+    if (contractIds.length) {
+      // Detach any renewal in another building that points at these contracts.
+      await this.prisma.contract.updateMany({
+        where: { parentContractId: { in: contractIds }, id: { notIn: contractIds } },
+        data: { parentContractId: null },
+      });
+      await this.prisma.contractRoom.deleteMany({
+        where: { contractId: { in: contractIds } },
+      });
+      await this.prisma.contract.deleteMany({ where: { id: { in: contractIds } } });
+    }
+    if (roomIds.length) {
+      await this.prisma.contractRoom.deleteMany({ where: { roomId: { in: roomIds } } });
+      await this.prisma.room.deleteMany({ where: { id: { in: roomIds } } });
     }
 
-    // Utility bills reference the building. A bill that was actually paid is
-    // financial history and must be kept, so it blocks deletion. Unpaid bills
-    // (leftover test entries) carry no records and are cleared with the building.
     const bills = await this.prisma.utilityBill.findMany({
       where: { buildingId: id },
-      select: { id: true, _count: { select: { payments: true } } },
+      select: { id: true },
     });
-    if (bills.some((b) => b._count.payments > 0)) {
-      throw new AppException(
-        ApiCode.BUILDING_HAS_UTILITY_HISTORY,
-        'Cannot delete a building with paid utility bills.',
-        HttpStatus.CONFLICT,
-      );
+    const billIds = bills.map((b) => b.id);
+    if (billIds.length) {
+      await this.prisma.utilityPayment.deleteMany({
+        where: { utilityBillId: { in: billIds } },
+      });
+      await this.prisma.utilityBill.deleteMany({ where: { id: { in: billIds } } });
     }
-    if (bills.length) {
-      await this.prisma.utilityBill.deleteMany({ where: { buildingId: id } });
-    }
+
     await this.prisma.building.delete({ where: { id } });
   }
 
