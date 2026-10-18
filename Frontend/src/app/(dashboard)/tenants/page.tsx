@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -75,6 +76,7 @@ function SortHeader({
 }
 
 export default function TenantsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<TenantStatus | "all">("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -213,9 +215,17 @@ export default function TenantsPage() {
               </TableRow>
             )}
             {rows?.map((t) => (
-              <TableRow key={t.id}>
+              <TableRow
+                key={t.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/tenants/${t.id}`)}
+              >
                 <TableCell>
-                  <Link href={`/tenants/${t.id}`} className="font-medium hover:underline">
+                  <Link
+                    href={`/tenants/${t.id}`}
+                    className="font-medium hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {t.businessName}
                   </Link>
                 </TableCell>
@@ -233,6 +243,7 @@ export default function TenantsPage() {
                           key={l.contractId}
                           href={`/contracts/${l.contractId}`}
                           className="hover:underline"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {l.buildingName} · {l.roomNumbers.join(", ")}
                         </Link>

@@ -224,8 +224,12 @@ Second round of client/tester feedback, implemented + QA'd (17 live assertions p
 - **Advance credit on the invoice** — invoice detail returns
   `advanceCreditAvailable` (tenant's unapplied credit) and offers an **Apply**
   action right on the invoice; the tenant page still shows the balance too.
-- **Whole invoice row clickable** — clicking anywhere on an invoice row opens it
-  (not just the tenant/period); the tenant link stays for open-in-new-tab.
+- **Whole row clickable — every module (consistent)** — clicking anywhere on a
+  list row opens that record, not just a date/name. Applied to Buildings, Vacant
+  units, Tenants, Contracts, Invoices (→ detail); Payments & the building Rooms
+  table (→ edit dialog); Utilities unpaid bills (→ pay dialog); Audit already
+  opened its detail. Name/link cells and action buttons `stopPropagation` so
+  they still do their own thing (and open-in-new-tab keeps working).
 
 ## 8. Follow-ups before production
 

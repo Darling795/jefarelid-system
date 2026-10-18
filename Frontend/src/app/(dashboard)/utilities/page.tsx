@@ -156,7 +156,11 @@ export default function UtilitiesPage() {
               </TableRow>
             )}
             {bills.data?.data.map((b) => (
-              <TableRow key={b.id}>
+              <TableRow
+                key={b.id}
+                className={b.status !== "paid" ? "cursor-pointer" : ""}
+                onClick={() => b.status !== "paid" && setPayFor(b)}
+              >
                 <TableCell>{formatPeriod(b.billingPeriod)}</TableCell>
                 <TableCell>{b.buildingName}</TableCell>
                 <TableCell className="capitalize">{b.utilityType}</TableCell>
@@ -169,7 +173,11 @@ export default function UtilitiesPage() {
                 <TableCell><StatusBadge status={b.status} /></TableCell>
                 <TableCell className="text-right">
                   {b.status !== "paid" && (
-                    <Button size="sm" variant="ghost" onClick={() => setPayFor(b)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); setPayFor(b); }}
+                    >
                       <Wallet className="size-4" /> Pay
                     </Button>
                   )}

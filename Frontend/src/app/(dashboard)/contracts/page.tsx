@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Plus } from "lucide-react";
 
@@ -37,6 +38,7 @@ const STATUS_ITEMS = STATUSES.map((s) => ({
 }));
 
 export default function ContractsPage() {
+  const router = useRouter();
   const [status, setStatus] = useState("all");
   const [buildingId, setBuildingId] = useState("all");
   const buildings = useQuery({ queryKey: ["buildings"], queryFn: listBuildings });
@@ -131,9 +133,17 @@ export default function ContractsPage() {
               </TableRow>
             )}
             {data?.data.map((c) => (
-              <TableRow key={c.id}>
+              <TableRow
+                key={c.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/contracts/${c.id}`)}
+              >
                 <TableCell>
-                  <Link href={`/contracts/${c.id}`} className="font-medium hover:underline">
+                  <Link
+                    href={`/contracts/${c.id}`}
+                    className="font-medium hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {c.tenant.businessName}
                   </Link>
                 </TableCell>

@@ -205,7 +205,11 @@ export default function PaymentsPage() {
               </TableRow>
             )}
             {payments.data?.data.map((p) => (
-              <TableRow key={p.id}>
+              <TableRow
+                key={p.id}
+                className="cursor-pointer"
+                onClick={() => setEditing(p)}
+              >
                 <TableCell>{formatDate(p.paymentDate)}</TableCell>
                 <TableCell>{p.tenantName}</TableCell>
                 <TableCell>{formatPeriod(p.periodMonth)}</TableCell>
@@ -216,7 +220,12 @@ export default function PaymentsPage() {
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPHP(p.amountPaid)}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon-sm" onClick={() => setEditing(p)} aria-label="Edit payment">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); setEditing(p); }}
+                    aria-label="Edit payment"
+                  >
                     <Pencil className="size-4" />
                   </Button>
                 </TableCell>

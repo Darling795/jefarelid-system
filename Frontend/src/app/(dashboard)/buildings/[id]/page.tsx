@@ -157,7 +157,14 @@ export default function BuildingDetailPage() {
                   </TableRow>
                 )}
                 {data.rooms.map((r) => (
-                  <TableRow key={r.id} className={r.isActive ? "" : "opacity-50"}>
+                  <TableRow
+                    key={r.id}
+                    className={`cursor-pointer ${r.isActive ? "" : "opacity-50"}`}
+                    onClick={() => {
+                      setEditRoom(r);
+                      setRoomOpen(true);
+                    }}
+                  >
                     <TableCell className="font-medium">{r.roomNumber}</TableCell>
                     <TableCell>{r.floor ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -177,7 +184,8 @@ export default function BuildingDetailPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditRoom(r);
                             setRoomOpen(true);
                           }}
@@ -187,7 +195,10 @@ export default function BuildingDetailPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => setRoomToDelete(r)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRoomToDelete(r);
+                          }}
                         >
                           <Trash2 className="size-4" />
                         </Button>

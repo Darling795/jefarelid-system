@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -113,6 +114,7 @@ function SortHeader({
 }
 
 function BuildingsTable({ onCreate }: { onCreate: () => void }) {
+  const router = useRouter();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["buildings"],
     queryFn: listBuildings,
@@ -211,11 +213,16 @@ function BuildingsTable({ onCreate }: { onCreate: () => void }) {
           )}
 
           {sorted?.map((b) => (
-            <TableRow key={b.id} className="cursor-pointer">
+            <TableRow
+              key={b.id}
+              className="cursor-pointer"
+              onClick={() => router.push(`/buildings/${b.id}`)}
+            >
               <TableCell>
                 <Link
                   href={`/buildings/${b.id}`}
                   className="flex items-center gap-2 font-medium hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Building2 className="size-4 text-muted-foreground" />
                   {b.name}
@@ -237,6 +244,7 @@ function BuildingsTable({ onCreate }: { onCreate: () => void }) {
 }
 
 function VacantUnits() {
+  const router = useRouter();
   const [buildingId, setBuildingId] = useState<string>("all");
   const [sortBy, setSortBy] = useState<VacantSortBy>("buildingName");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -348,11 +356,16 @@ function VacantUnits() {
             )}
 
             {data?.map((r) => (
-              <TableRow key={r.id} className="cursor-pointer">
+              <TableRow
+                key={r.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/buildings/${r.buildingId}`)}
+              >
                 <TableCell className="font-medium">
                   <Link
                     href={`/buildings/${r.buildingId}`}
                     className="hover:underline"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {r.roomNumber}
                   </Link>
